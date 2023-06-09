@@ -22,16 +22,26 @@ def getgps(tags):
     lonsec = tags["GPS GPSLongitude"].values[2].num / tags["GPS GPSLongitude"].values[2].den
     lonEW = tags["GPS GPSLongitudeRef"].values
     lon = (londeg + lonmin / 60 + lonsec / 3600) * (1 if lonEW == "E" else -1)
-    GPSDate = tags["GPS GPSDate"].values
-    GPSDate = GPSDate.split(":")
-    GPSYear = int(GPSDate[0])
-    GPSMonth = int(GPSDate[1])
-    GPSDay = int(GPSDate[2])
-    GPSHour = int(tags["GPS GPSTimeStamp"].values[0].num / tags["GPS GPSTimeStamp"].values[0].den)
-    GPSMin = int(tags["GPS GPSTimeStamp"].values[1].num / tags["GPS GPSTimeStamp"].values[1].den)
-    GPSSec = int(tags["GPS GPSTimeStamp"].values[2].num / tags["GPS GPSTimeStamp"].values[2].den)
-    GPSssec=tags["GPS GPSTimeStamp"].values[2].num / tags["GPS GPSTimeStamp"].values[2].den-GPSSec
     GPSValid=True
+    if "GPS GPSDate" in tags:
+        GPSDate = tags["GPS GPSDate"].values
+        GPSDate = GPSDate.split(":")
+        GPSYear = int(GPSDate[0])
+        GPSMonth = int(GPSDate[1])
+        GPSDay = int(GPSDate[2])
+    else:
+        GPSYear=None
+        GPSMonth=None
+        GPSDay=None
+    if "GPS GPSTimeStamp" in tags:
+        GPSHour = int(tags["GPS GPSTimeStamp"].values[0].num / tags["GPS GPSTimeStamp"].values[0].den)
+        GPSMin = int(tags["GPS GPSTimeStamp"].values[1].num / tags["GPS GPSTimeStamp"].values[1].den)
+        GPSSec = int(tags["GPS GPSTimeStamp"].values[2].num / tags["GPS GPSTimeStamp"].values[2].den)
+        GPSssec=tags["GPS GPSTimeStamp"].values[2].num / tags["GPS GPSTimeStamp"].values[2].den-GPSSec
+    else:
+        GPSHour=None
+        GPSMin=None
+        GPSSec=None
     if "GPS GPSStatus" in tags and tags["GPS GPSStatus"].values=="V":
         GPSValid=False
     return (lat,lon,(GPSYear,GPSMonth,GPSDay,GPSHour,GPSMin,GPSSec),GPSValid)
@@ -52,6 +62,8 @@ def is_img_in_utc(gpstime,imgtime):
     pass
 
 def make_aware(naive,tzname='UTC'):
+    if naive[0] is None:
+        return None
     naive_datetime=datetime.datetime(naive[0],naive[1],naive[2],naive[3],naive[4],naive[5])
     tz=pytz.timezone(tzname)
     return tz.localize(naive_datetime)
@@ -86,16 +98,17 @@ def make_kml_from_exif(path:str="/home/jeppesen/Desktop/DCA/"):
                     l=make_aware(imgtime,tzname=tzname)
                     l_utc=l.astimezone(pytz.timezone("UTC"))
 
-                    diff=(g-l).total_seconds()
                     warning=""
                     if not gpsvalid:
-                        warning="Warning! GPS data is marked invalid.<br>"
-                    if abs(diff)>8*3600:
-                        warning=warning+("Warning! GPS and image timestamps are too different. Old GPS fix?"
-                                 "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
-                    elif abs(diff)>5:
-                        warning=warning+("Warning! GPS and image timestamps are too different. Camera reported image time in UTC?"
-                                 "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
+                        warning+="Warning! GPS data is marked invalid.<br>"
+                    if g is not None and l is not None:
+                        diff=(g-l).total_seconds()
+                        if abs(diff)>8*3600:
+                            warning+=("Warning! GPS and image timestamps are too different. Old GPS fix?"
+                                     "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
+                        elif abs(diff)>5:
+                            warning+=("Warning! GPS and image timestamps are too different. Camera reported image time in UTC?"
+                                     "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
                     if warning=="":
                         warning="GPS looks good<br />"
                     width = tags["EXIF ExifImageWidth"].values[0]
@@ -106,8 +119,10 @@ def make_kml_from_exif(path:str="/home/jeppesen/Desktop/DCA/"):
                     else:
                         width=width*640//height
                         height=640
-                    warning=("GPS time: %04d-%02d-%02dT%02d:%02d:%02dZ<br />"%gpstime+
-                             "Image time: %s<br />"%l.strftime("%Y-%m-%dT%H:%M:%S%z")+warning)
+                    if l is not None:
+                        warning="Image time: %s<br />"%l.strftime("%Y-%m-%dT%H:%M:%S%z")+warning
+                    if g is not None:
+                        warning="GPS time: %04d-%02d-%02dT%02d:%02d:%02dZ<br />"%gpstime+warning
                     print(warning)
                     ouf.write("    <Placemark>\n")
                     ouf.write("      <name>%s</name>\n"%infn.split("/")[-1])
