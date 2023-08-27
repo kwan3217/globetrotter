@@ -685,7 +685,7 @@ def main():
     puttylog = re.compile(
         r"=~=~=~=~=~=~=~=~=~=~=~= PuTTY log (?P<year>[0-9][0-9][0-9][0-9]).(?P<month>[0-9][0-9]).(?P<day>[0-9][0-9]) (?P<hour>[0-9][0-9]):(?P<minute>[0-9][0-9]):(?P<second>[0-9][0-9]).*")
     line_timestamp=re.compile(r"^(?P<year>[0-9][0-9][0-9][0-9])-(?P<month>[0-9][0-9])-(?P<day>[0-9][0-9])T(?P<hour>[0-9][0-9]):(?P<minute>[0-9][0-9]):(?P<second>[0-9][0-9]).*")
-    radio=re.compile(r".*Radio(?P<radio>[01])\s+Channel=(?P<channel>[AB])\s+RSSI=(?P<rssi>-?[0-9]+)dBm\s+MsgType=(?P<msgtype>[0-9]+)\s+MMSI=(?P<mmsi>[0-9]+)")
+    radioline=re.compile(r".*Radio(?P<radio>[01])\s+Channel=(?P<channel>[AB])\s+RSSI=(?P<rssi>-?[0-9]+)dBm\s+MsgType=(?P<msgtype>[0-9]+)\s+MMSI=(?P<mmsi>[0-9]+)")
     aivdm=re.compile(r".*(!AIVDM.*)(\*[A-F0-9][A-F0-9])")
     infns = []
     for i in range(8,9):
@@ -700,6 +700,7 @@ def main():
                 binfn=basename(infn)
                 print(binfn,file=logf)
                 dt=get_fn_dt(infn,file=logf)
+                radio=None
                 with bz2.open(infn,"rt") if ".bz2" in infn else open(infn,"rt") as inf:
                     for i_linem,line in enumerate(inf):
                         i_line=i_linem+1
@@ -712,12 +713,14 @@ def main():
                             line_dt=make_utc(match=match)
                         if dt is None:
                             dt=line_dt
-                        if match:=radio.match(line):
-                            pass
+                        if match:=radioline.match(line):
+                            radio={"radio_"+k:l(match.group(k)) for k,l in [("radio",int),("channel",str),("rssi",int),("msgtype",int),("mmsi",int)]}
                         msg_dt=None
                         if match:=aivdm.match(line):
                             msg=parse_aivdm(match.group(1))
                             if msg is not None and "mmsi" in msg:
+                                if radio is not None:
+                                    msg.update(radio)
                                 if line_dt is not None:
                                     dt=line_dt
                                 else:
@@ -734,6 +737,7 @@ def main():
                                 if msg["msgtype"] in (5,):
                                     mmsis[msg["mmsi"]][0]=msg
                                 print(binfn,i_line,dt, msg, file=msgf)
+                                radio = None
             name,dts,poss,colors,binfns,lines=mmsis[dream]
             lats=[]
             lons=[]
