@@ -3,6 +3,7 @@ Packet descriptions for UBLOX binary packets
 """
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from struct import unpack
 from typing import BinaryIO, Callable, Any
 
@@ -82,7 +83,7 @@ def read_ublox_packet(header:bytes,inf:BinaryIO):
 read_packet.classes[0xb5]=read_ublox_packet
 
 
-class UBloxPacket(Packet):
+class UBloxPacket:
     """
     Subclasses should be dataclasses. Each field in the packet is represented by a
     field in the dataclass. The type of the field is the type of the *scaled* value.
@@ -121,7 +122,7 @@ class UBloxPacket(Packet):
         pass
 
 
-def md(type:str,scale:None|int|float|Callable[[int],Any]=None,unit:str=None,fmt:str=None,b0:int=None,b1:int=None):
+def bin_field(type:str, scale: None | int | float | Callable[[int], Any]=None, unit:str=None, fmt:str=None, b1:int=None, b0:int=None,*args,**kwargs):
     result={'type':type}
     if scale is not None:
         result['scale']=scale
@@ -129,35 +130,62 @@ def md(type:str,scale:None|int|float|Callable[[int],Any]=None,unit:str=None,fmt:
         result['unit']=unit
     if fmt is not None:
         result['fmt']=fmt
+    if b0 is not None:
+        result['b0']=b0
+    if b1 is not None:
+        result['b1']=b1
+    return metadata
 
 
+class FIX(Enum):
+    NONE=0
+    DR_ONLY=1
+    TWOD=2
+    THREED=3
+    GPS_DR=4
+    TIME=5
+
+
+class PSM(Enum):
+    NOT_ACTIVE=0
+    ENABLED=1
+    ACQ=2
+    TRACKING=3
+    POWER_OPT_TRACKING=4
+    INACTIVE=5
+
+
+class CARR_SOLN(Enum):
+    NO_SOLN=0
+    SOLN_WITH_FLOAT_AMB=1
+    SOLN_WITH_FIXED_AMB=2
 
 
 @dataclass
 class UBX_NAV_PVT(UBloxPacket):
-    iTOW:float=field(metadata=md("U4",scale':1e-3,'unit':"s",'fmt':"%10.3f"})
-    year:int  =field(metadata={'type':'("U2", None, "y", None),
-                   "month": ("U1", None, "month", None),
-                   "day": ("U1", None, "d", None),
-                   "hour": ("U1", None, "h", None),
-                   "min": ("U1", None, "min", None),
-                   "sec": ("U1", None, "s", None),
-                   "valid": ("X1", flags([("validDate", 0, 0, bool),
-                                          ("validTime", 1, 1, bool),
-                                          ("fullyResolved", 2, 2, bool),
-                                          ("validMag", 3, 3, bool)]), None, None),
-                   "tAcc": ("U4", 1e-9, "s", "%12.9f"),
-                   "nano": ("I4", 1e-9, "s", "%12.9f"),
-                   "fixType": ("X1", FIX, None, None),
-                   "flags": ("X1", flags([("gnssFixOK", 0, 0, bool),
-                                          ("diffSoln", 1, 1, bool),
-                                          ("psmState", 4, 2, PSM),
-                                          ("headVehValid", 5, 5, bool),
-                                          ("carrSoln", 7, 6, CARR_SOLN)]), None, None),
-                   "flags2": ("X1", flags([("confirmedAvai", 5, 5, bool),
-                                           ("confirmedDate", 6, 6, bool),
-                                           ("confirmedTime", 7, 7, bool)]), None, None),
-                   "numSV": ("U1", None, None, None),
+    iTOW         :float    =field(metadata=bin_field("U4", unit="s", scale=1e-3, fmt="%10.3f"))
+    year         :int      =field(metadata=bin_field("U2", unit="y"))
+    month        :int      =field(metadata=bin_field("U1", unit="month"))
+    day          :int      =field(metadata=bin_field("U1", unit="d"))
+    hour         :int      =field(metadata=bin_field("U1", unit="h"))
+    min          :int      =field(metadata=bin_field("U1", unit="min"))
+    sec          :int      =field(metadata=bin_field("U1", unit="s"))
+    valid        :bool     =field(metadata=bin_field("X1", b0=0, scale=bool))
+    validTime    :bool     =field(metadata=bin_field("X1", b0=1, scale=bool))
+    fullyResolved:bool     =field(metadata=bin_field("X1", b0=2, scale=bool))
+    validMag     :bool     =field(metadata=bin_field("X1", b0=3, scale=bool))
+    tAcc         :float    =field(metadata=bin_field("U4", unit="s", scale=1e-9, fmt="%12.9f"))
+    nano         :float    =field(metadata=bin_field("I4", unit="s", scale=1e-9, fmt="%12.9f"))
+    fixType      :FIX      =field(metadata=bin_field("X1", scale=FIX))
+    gnssFixOK    :bool     =field(metadata=bin_field("X1", scale=bool, b0=0))
+    diffSoln     :bool     =field(metadata=bin_field("X1", scale=bool, b0=1))
+    psmState     :PSM      =field(metadata=bin_field("X1", scale=PSM, b1=4, b0=2))
+    headVehValid :bool     =field(metadata=bin_field("X1", scale=bool, b0=5))
+    carrSoln     :CARR_SOLN=field(metadata=bin_field("X1", scale=CARR_SOLN, b1=7, b0=6))
+    confirmedAvai:bool =field(metadata=bin_field("X1", scale=bool, b0=5))
+    confirmedDate:bool =field(metadata=bin_field("X1", scale=bool, b0=6))
+    confirmedTime:bool =field(metadata=bin_field("X1", scale=bool, b0=7))
+    numSV        :int  =field(metadata=bin_field("U1"),
                    "lon": ("I4", 1e-7, "deg", "%12.7f"),
                    "lat": ("I4", 1e-7, "deg", "%12.7f"),
                    "height": ("I4", 1e-3, "m", "%12.3f"),
