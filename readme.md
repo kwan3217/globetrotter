@@ -22,3 +22,10 @@ information.
 Extract GPS data from EXIF tags of images,
 and gather the data into a KML with placemarkers
 pointing to each image in the appropriate place.
+
+## import_ubx.py
+Import data in UBlox packet format. This contains
+a whole bunch of stuff about the signal (pseudoranges,
+nav message, almanac, etc). Data is imported
+into a database for quick retrieval, perhaps
+at the expense of slow import.
