@@ -15,9 +15,9 @@ import numpy as np
 from kwanmath.vector import vcomp, vlength
 from matplotlib import pyplot as plt
 
-from parse_ublox.bin import dump_bin
-from parse_ublox.parse_rtcm import parse_rtcm
-from parse_ublox import parse_ublox, print_ublox, DataType
+from packet.bin import dump_bin
+from packet.rtcm.parse_rtcm import parse_rtcm
+from packet.parse_ublox import parse_ublox  #, DataType
 
 
 class PacketType(Enum):
@@ -190,7 +190,8 @@ def plot_waves(wildcard:str="/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/20
                 if packet_type==PacketType.NMEA:
                     print(packet,file=ouf)
                 elif packet_type==PacketType.UBLOX:
-                    print_ublox(packet,file=ouf)
+                    """
+                    #print_ublox(packet,file=ouf)
                     if packet.name=="UBX-ESF-MEAS":
                         if has_pvt:
                             esf_timestamps.append(packet.timeTag)
@@ -220,7 +221,9 @@ def plot_waves(wildcard:str="/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/20
                                 gyro_zs.append(scale)
                             if type == DataType.GYRO_T:
                                 gyro_ts.append(scale)
-                    elif packet.name=="UBX-NAV-PVT":
+                    el
+                    """
+                    if packet.name=="UBX-NAV-PVT":
                         print(packet.iTOW)
                         pvt_itow.append(packet.iTOW)
                         has_pvt=True
