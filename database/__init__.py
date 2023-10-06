@@ -55,10 +55,11 @@ class Database:
                  provided by the underlying engine (psycopg3)
         """
         return self.Transaction(self)
-    def __init__(self,database,user,password):
+    def __init__(self,database,user,password,**kwargs):
         self.database=database
         self.user = user
         self.password = password
+        self.kwargs=kwargs
     def __enter__(self):
         self._conn=self.connect()
         self._cur=self._conn.cursor()
