@@ -22,7 +22,7 @@ def _postgres_escape_string(s):
 
 class PostgresDatabase(Database):
     def connect(self):
-        conn=psycopg.connect(conninfo=f"dbname={self.database} user={self.user} password={self.password}",autocommit=True)
+        conn=psycopg.connect(conninfo=f"dbname={self.database} user={self.user} password={self.password}",autocommit=True,**self.kwargs)
         conn.execute("SET TIMEZONE TO 'UTC';")
         return conn
     def transaction(self):
