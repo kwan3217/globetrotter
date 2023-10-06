@@ -462,13 +462,13 @@ class UBX_NAV_SBAS(UBloxPacket):
         ENABLED_TEST=3
     mode          :SBASMODE=field(metadata=bin_field("U1",scale=SBASMODE))
     class SBASSYS(Enum):
-        UNKNOWN=-1
+        UNKNOWN=255
         WAAS=0
         EGNOS=1
         MSAS=2
         GAGAN=3
         GPS=16
-    sys           :SBASSYS=field(metadata=bin_field("I1",scale=SBASSYS))
+    sys           :SBASSYS=field(metadata=bin_field("U1",scale=SBASSYS))
     Ranging       :bool=field(metadata=bin_field("X1",scale=bool,b0=0,comment="GEO may be used as a ranging source"))
     Corrections   :bool=field(metadata=bin_field("X1",scale=bool,b0=1,comment="GEO is providing correction data"))
     Integrity     :bool=field(metadata=bin_field("X1",scale=bool,b0=2,comment="GEO is providing integrity"))
