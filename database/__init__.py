@@ -177,7 +177,10 @@ class Database:
         this_pre,footer,this_post=self.make_table_footer(table_name,table_comment)
         if unique_tuples is not None:
             for unique_tuple in unique_tuples:
-                post_list.append(f"CREATE UNIQUE INDEX if not exists {'_'.join(unique_tuple)}_index ON {table_name} ({','.join(unique_tuple)});")
+                post_list.append(f"CREATE UNIQUE INDEX if not exists {table_name}_{'_'.join(unique_tuple)}_index ON {table_name} ({','.join(unique_tuple)});")
+        if indexes is not None:
+            for index in indexes:
+                post_list.append(f"CREATE INDEX if not exists {table_name}_{index}_index ON {table_name} ({index});")
         pre_list+=this_pre
         table_sql+=footer
         post_list+=this_post
