@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/FlightAware" />
+      <excludeFolder url="file://$MODULE_DIR$/android_gps" />
+      <excludeFolder url="file://$MODULE_DIR$/dt" />
+      <excludeFolder url="file://$MODULE_DIR$/exif" />
+      <excludeFolder url="file://$MODULE_DIR$/kml" />
+      <excludeFolder url="file://$MODULE_DIR$/log" />
+      <excludeFolder url="file://$MODULE_DIR$/maps" />
+      <excludeFolder url="file://$MODULE_DIR$/msg" />
+      <excludeFolder url="file://$MODULE_DIR$/venv" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
