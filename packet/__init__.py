@@ -1,12 +1,68 @@
+import warnings
+from dataclasses import dataclass, fields
 from decimal import Decimal
 from datetime import datetime
+from enum import Enum
 from os.path import basename
 from typing import BinaryIO, Mapping
 
 from database import Database, Field
 
 
-def read_packet(inf:BinaryIO)->'Packet':
+class Packet:
+    class CacheHasOldValue(Enum):
+        NO_PREV=0
+        PREV_SAME=1
+        PREV_DIFF=2
+    def cache_has_old_value(self, db):
+        """
+
+        :param db:
+        :return: 0 if no previous record
+                 1 if
+        """
+        sql=f"select {','.join(self.cache_fields)} from {self.get_table_name()} where {self.cache_index}=%s order by id desc limit 1"
+        db.execute(sql,(getattr(self,self.cache_index),))
+        row=db._cur.fetchone()
+        if row is None:
+            return self.CacheHasOldValue.NO_PREV
+        for field,old_value in zip(self.cache_fields,row):
+            new_value=getattr(self,field)
+            if isinstance(new_value,Enum):
+                new_value=new_value.name
+            if old_value!=new_value:
+                return self.CacheHasOldValue.PREV_DIFF
+        return self.CacheHasOldValue.PREV_SAME
+    def write(self,db,*,fileid:int,ofs:int,epochid:int=None)->None:
+        table_name = self.get_table_name()
+        parent_fields=self.compiled_form.hq+self.compiled_form.fq
+        values=[getattr(self,field_name) for field_name in parent_fields]+[fileid,ofs]
+        parent_fields+=["file","ofs"]
+        if self.has_cache:
+            changed=self.cache_has_old_value(db)
+            if changed==self.CacheHasOldValue.PREV_SAME:
+                return
+            else:
+                values.append(changed==self.CacheHasOldValue.PREV_DIFF)
+            parent_fields+=["changed"]
+        if self.use_epoch:
+            if epochid is None:
+                raise ValueError("No epoch id for a packet that needs it")
+            parent_fields+=["epoch"]
+            values.append(epochid)
+        parent=db.insert_get_id(table_name,parent_fields,values)
+        if self.compiled_form.bf is not None and len(self.compiled_form.bq)>0:
+            columns=tuple([getattr(self,field_name) for field_name in self.compiled_form.bq])
+            block_field_names=["parent",]+self.compiled_form.bq
+            for values in zip(*columns):
+                db.insert(table_name+"_block",block_field_names,(parent,)+values)
+
+    def get_table_name(self):
+        table_name = getattr(self, 'table_name', self.__class__.__name__[4:].lower())
+        return table_name
+
+
+def read_packet(inf:BinaryIO)->Packet:
     """
     Read a packet. This is a factory function, which reads
     the next byte from the file, figures out what kind of packet
@@ -35,13 +91,34 @@ def read_packet(inf:BinaryIO)->'Packet':
             if len(header)<1:
                 return
             packet=read_packet.classes[header[0]](header,inf)
-            yield packet
+            if packet!=None:
+                yield packet
+            else:
+                print(f"Null packet at {basename(inf.name)} 0x{inf.tell():08x}")
         except EOFError:
             return
         except Exception as e:
-            import warnings
-            warnings.warn(str(e))
+            print(f"{basename(inf.name)} 0x{inf.tell():08x}")
+            import traceback
+            traceback.print_exc()
+            warnings.warn("Skipping bad packet")
 read_packet.classes={}
+
+
+def read_null_packet(header: bytes, inf: BinaryIO):
+    """
+    No known packet format starts with a null byte. If we see a null byte,
+    read and discard all of them until we get a non-null byte.
+    :param header:
+    :param inf:
+    :return:
+    """
+    result = header
+    while result[-1] != 0x0:
+        result += inf.read(1)
+    return None
+read_packet.classes[0]=read_null_packet
+
 
 
 def ensure_timeseries_tables(db:Database,drop=False):
@@ -73,7 +150,7 @@ def ensure_timeseries_tables(db:Database,drop=False):
 def register_file_start(db:Database,fn:str):
     id=db.select_id("files",("basename",),(basename(fn),))
     if id is not None:
-        sql="update files set process_start_time=NOW() where id=%s"
+        sql="update files set process_start_time=NOW(),process_finish_time=NULL where id=%s"
         db.execute(sql,(id,))
     else:
         id=db.insert_get_id("files",("basename",),(basename(fn),))
@@ -114,6 +191,68 @@ def make_comment(metadata: Mapping):
             comment = f" [{metadata['unit']}]"
 
 
+def ensure_table(db:Database,pktcls:dataclass,drop:bool,table_name:str=None)->None:
+    """
+    If necessary, create a table in the current database representing this packet.
+    If a table of the given name already exists, don't do anything. Note that this
+    means that if the table exists but has a different structure than specified by
+    this class, the table won't be regenerated or modified. If you change the
+    structure of a packet, either manually modify the table to match or delete the
+    table and start over.
 
-
-
+    :param db:
+    :param pktcls:
+    :param drop: If true, drop any existing table with the same name
+    :return: None, but side effect is that table is guaranteed to exist, or exception
+             is thrown if we can't satisfy that guarantee.
+    """
+    table_fields=[]
+    block_fields=None
+    table_comment=pktcls.__doc__
+    if table_name is None:
+        table_name=pktcls.__name__[4:].lower()
+    unique_tuples=[]
+    indexes=[]
+    if getattr(pktcls,'use_epoch',False):
+        table_fields.append(Field(name="epoch",python_type=int,comment="Foreign key to epoch table, holding exact UTC "
+                                                                       "time. Across all tables, all rows with the "
+                                                                       "same epoch id represent data describing the "
+                                                                       "exact same instant in time."))
+        indexes.append("epoch")
+    pktcls.has_cache=False
+    pktcls.cache_index=None
+    pktcls.cache_fields=[]
+    for field in fields(pktcls):
+        if not field.metadata.get("record",True):
+            continue
+        if str(field.type)[0:4]=='list':
+            if block_fields is None:
+                block_fields=[Field(name="parent",python_type=int,nullable=False).update_metadata(field.metadata)]
+            block_fields.append(Field(name=field.name,python_type=field.type.__args__[0]).update_metadata(field.metadata))
+        else:
+            if field.metadata.get("unique",False):
+                unique_tuples.append((field.name,))
+            if field.metadata.get("index",False):
+                indexes.append(field.name)
+            if field.metadata.get("cache",False):
+                pktcls.has_cache=True
+                pktcls.cache_fields.append(field.name)
+            if field.metadata.get("cacheindex"):
+                pktcls.cache_index=field.name
+            table_fields.append(Field(name=field.name,python_type=field.type).update_metadata(field.metadata))
+    if pktcls.has_cache:
+        table_fields.append(Field(name="changed",python_type=bool,
+                                  comment=f"If False, this is the first time this {pktcls.cache_index} has been seen. "
+                                           "If True, this object has been seen before and one of "
+                                          "the significant fields has changed."))
+    table_fields.append(Field(name="file",python_type=int,nullable=False,comment="Foreign key to file table, holding "
+                                                                                 "information about the file that this "
+                                                                                 "packet is extracted from."))
+    table_fields.append(Field(name="ofs",python_type=int,nullable=False,comment="Zero-based offset from beginning of "
+                                                                                "file of byte 0 of this packet. If the "
+                                                                                "packet is compressed (EG .ubx.bz2), "
+                                                                                "this is the offset in the "
+                                                                                "decompressed stream."))
+    db.make_table(table_name=table_name,fields=table_fields,table_comment=table_comment,unique_tuples=unique_tuples,indexes=indexes,drop=drop)
+    if block_fields is not None:
+        db.make_table(table_name=table_name+"_block", fields=block_fields, indexes=["parent"],drop=drop)

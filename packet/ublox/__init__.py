@@ -11,19 +11,16 @@ import protocol_33_21
 
 Then
 """
-from collections import namedtuple, defaultdict
-from dataclasses import dataclass, field, fields
-from datetime import datetime
-from enum import Enum
+from collections import namedtuple
+from dataclasses import dataclass, fields
 from functools import partial
 from struct import unpack
-from typing import BinaryIO, Callable, Any
-from decimal import Decimal
+from typing import BinaryIO
 import re
 
-from database import Database, Field
+from database import Database
 from packet.bin import get_bits
-from packet import read_packet, make_comment
+from packet import read_packet, Packet, ensure_table
 
 
 def fletcher8(buf:bytes):
@@ -87,7 +84,7 @@ read_ublox_packet.classes={}
 read_packet.classes[0xb5]=read_ublox_packet
 
 
-class UBloxPacket:
+class UBloxPacket(Packet):
     """
     Subclasses should be dataclasses. Each field in the packet is represented by a
     field in the dataclass. The type of the field is the type of the *scaled* value.
@@ -148,23 +145,6 @@ class UBloxPacket:
         """
         if self.required_version is not None and self.required_version!=self.version:
             raise ValueError(f"Bad version for packet {self.__class__.__name__} version 0x{self.version:02x}, expected 0x{self.required_version:02x}")
-
-    def write(self,db,*,fileid:int,ofs:int,epochid:int=None)->None:
-        table_name = self.__class__.__name__[4:].lower()
-        parent_fields=self.compiled_form.hq+self.compiled_form.fq
-        values=[getattr(self,field_name) for field_name in parent_fields]+[fileid,ofs]
-        parent_fields+=["file","ofs"]
-        if self.use_epoch:
-            if epochid is None:
-                raise ValueError("No epoch id for a packet that needs it")
-            parent_fields+=["epoch"]
-            values+=[epochid]
-        parent=db.insert_get_id(table_name,parent_fields,values)
-        if self.compiled_form.bf is not None and len(self.compiled_form.bq)>0:
-            columns=tuple([getattr(self,field_name) for field_name in self.compiled_form.bq])
-            block_field_names=["parent",]+self.compiled_form.bq
-            for values in zip(*columns):
-                db.insert(table_name+"_block",block_field_names,(parent,)+values)
     def __init__(self,cls:int,id:int,payload:bytes):
         self.cls = cls
         self.id = id
@@ -380,59 +360,6 @@ def compile_ublox(pktcls:dataclass)->None:
             footer_fields, footer_types, footer_scale, footer_units, footer_format,footer_widths,footer_b0,footer_b1,footer_unpack,footer_records))
 
 
-def ensure_table(db:Database,pktcls:dataclass,drop:bool)->None:
-    """
-    If necessary, create a table in the current database representing this packet.
-    If a table of the given name already exists, don't do anything. Note that this
-    means that if the table exists but has a different structure than specified by
-    this class, the table won't be regenerated or modified. If you change the
-    structure of a packet, either manually modify the table to match or delete the
-    table and start over.
-
-    :param db:
-    :param pktcls:
-    :param drop: If true, drop any existing table with the same name
-    :return: None, but side effect is that table is guaranteed to exist, or exception
-             is thrown if we can't satisfy that guarantee.
-    """
-    table_fields=[]
-    block_fields=None
-    table_comment=pktcls.__doc__
-    table_name=pktcls.__name__[4:].lower()
-    unique_tuples=[]
-    indexes=[]
-    if pktcls.use_epoch:
-        table_fields.append(Field(name="epoch",python_type=int,comment="Foreign key to epoch table, holding exact UTC "
-                                                                       "time. Across all tables, all rows with the "
-                                                                       "same epoch id represent data describing the "
-                                                                       "exact same instant in time."))
-        unique_tuples.append(("epoch",))
-    for field in fields(pktcls):
-        if not field.metadata.get("record",True):
-            continue
-        if str(field.type)[0:4]=='list':
-            if block_fields is None:
-                block_fields=[Field(name="parent",python_type=int,nullable=False).update_metadata(field.metadata)]
-            block_fields.append(Field(name=field.name,python_type=field.type.__args__[0]).update_metadata(field.metadata))
-        else:
-            if field.metadata.get("unique",False):
-                unique_tuples.append((field.name,))
-            if field.metadata.get("index",False):
-                indexes.append(field.name)
-            table_fields.append(Field(name=field.name,python_type=field.type).update_metadata(field.metadata))
-    table_fields.append(Field(name="file",python_type=int,nullable=False,comment="Foreign key to file table, holding "
-                                                                                 "information about the file that this "
-                                                                                 "packet is extracted from."))
-    table_fields.append(Field(name="ofs",python_type=int,nullable=False,comment="Zero-based offset from beginning of "
-                                                                                "file of byte 0 of this packet. If the "
-                                                                                "packet is compressed (EG .ubx.bz2), "
-                                                                                "this is the offset in the "
-                                                                                "decompressed stream."))
-    db.make_table(table_name=table_name,fields=table_fields,table_comment=table_comment,unique_tuples=unique_tuples,indexes=indexes,drop=drop)
-    if block_fields is not None:
-        db.make_table(table_name=table_name+"_block", fields=block_fields, indexes=["parent"],drop=drop)
-
-
 def ublox_packet(cls:int,id:int,*,use_epoch:bool=True,required_version:int=None):
     def inner(pktcls):
         __class__=pktcls
@@ -451,6 +378,6 @@ def ublox_packet(cls:int,id:int,*,use_epoch:bool=True,required_version:int=None)
 def ensure_tables(db:Database,drop:bool=False):
     for cls,ids in read_ublox_packet.classes.items():
         for id,packet in ids.items():
-            ensure_table(db,packet,drop=drop)
+            ensure_table(db, packet, drop=drop)
 
 
