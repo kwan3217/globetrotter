@@ -14,15 +14,23 @@ AIS data recorded by the shipometer contains a few more layers, inconsistently a
    OR debug lines. Each debug line is sent after the reciever receives and checks the message, but
    before it transmits that message. Debug lines are in the following format:
    Radio1	Channel=A RSSI=-75dBm MsgType=1 MMSI=311042900
-5. AIVDM messages, starting with !AVI and ending with the line.
+5. AIVDM messages, starting with !AVI and ending with the line. Once we get to this point, we are home free,
+   as AIVDM is standardized.
 """
 import bz2
 import re
+import warnings
+from collections import namedtuple
+from dataclasses import dataclass, field, fields
 from datetime import datetime, timedelta
 from enum import Enum
 from glob import glob
 from math import sqrt
 from os.path import basename
+from typing import Callable, Any
+
+from database import Database
+from packet import Packet, ensure_table
 
 import pytest as pytest
 import pytz
@@ -30,10 +38,8 @@ from matplotlib import pyplot as plt
 
 from track import Track
 
-#Dictionary of lists of fragments. Key is fragid, value is list of payloads. Once all payloads
-#are collected, they are concatenated and parsed, then removed from dict.
-frags={}
-
+class NotHandled(Exception):
+    pass
 
 def wraparound_delta(a:int,b:int,limit:int):
     """
@@ -114,17 +120,17 @@ def get_bitfield(nbits,payload,startbit,field_nbits):
     #the mask needs to be shifted so that its lowest bit is at LSB 6. This is from the
     #bit length(10) minus the highest bit position in MSB(2) minus the bit width(2)
     shift=nbits-startbit-field_nbits
+    if shift<=-field_nbits:
+        # Whole field is off the end of the data
+        return None
+    elif shift<0:
+        # Partial field, append enough zeros to fill out the field, and correct the shift
+        payload=payload<<-shift
+        shift=0
     shifted_mask=mask<<shift
     #Now we can grab the field and shift it back down
     field=(payload & shifted_mask)>>shift
     return field
-
-@pytest.mark.parametrize(
-    "nbits,payload,start,field_len,expected",
-    [(10,0b0011000000,2,2,0b11)]
-)
-def exercise_get_bitfield(nbits,payload,start,field_len,expected):
-    assert get_bitfield(nbits,payload,start,field_len)==expected
 
 
 def sixbit(nbits,string):
@@ -166,18 +172,6 @@ def b(nbits,payload):
 t=sixbit
 
 
-def scale_turn(nbits,payload):
-    payload=signed(nbits,payload)
-    if payload==0:
-        return 0
-    elif abs(payload)<=126:
-        return 4.733*sqrt(abs(payload))*(1 if payload>0 else -1)
-    elif abs(payload)==127:
-        return float('Inf')*(1 if payload>0 else -1)
-    else:
-        return float('nan')
-
-
 class Status(Enum):
     UNDERWAY_ENGINE=0
     ANCHOR=1
@@ -197,171 +191,36 @@ class Status(Enum):
     UNDEFINED=15
 
 
-
 class Maneuver(Enum):
     NA=0
     NO_SPECIAL=1
     SPECIAL=2
 
 
-posA={
-    "msgtype" :(  0, 6, u),
-    "repeat"  :(  6, 2, u),
-    "mmsi"    :(  8,30, u),
-    "status"  :( 38, 4, lambda nbits,payload:Status(payload)),
-    "turn"    :( 42, 8, scale_turn),
-    "speed"   :( 50,10, lambda nbits,payload:payload/10),
-    "accuracy":( 60, 1, b),
-    "lon"     :( 61,28, lambda nbits,payload:signed(nbits,payload)/(60*10000)),
-    "lat"     :( 89,27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-    "course"  :(116,12, lambda nbits,payload:payload/10),
-    "heading" :(128, 9, u),
-    "second"  :(137, 6, u),
-    "maneuver":(143, 2, lambda nbits,payload:Maneuver(payload)),
-    "raim"    :(148, 1, b),
-    "radio"   :(149,19, u)
-}
-
-msgtypes={
-    1:posA,
-    2:posA,
-    3:posA,
-    4:{
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "year": (38, 14, u),
-        "month": (52, 4, u),
-        "day": (56, 5, u),
-        "hour": (61, 5, u),
-        "minute": (66, 6, u),
-        "second": (72, 6, u),
-        "accuracy":( 78, 1, b),
-        "lon"     :( 79,28, lambda nbits,payload:signed(nbits,payload)/(60*10000)),
-        "lat"     :(107,27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-        "efpd":(134,4,u),
-        "raim": (148, 1, b),
-        "radio": (149, 19, u)
-    },
-    5:{
-        "msgtype":    (  0,  6, u),
-        "repeat":     (  6,  2, u),
-        "mmsi":       (  8, 30, u),
-        "ais_version":( 38,  2, u),
-        "imo":        ( 40, 30, u),
-        "callsign":   ( 70, 42, t),
-        "shipname":   (112,120, t),
-        "shiptype":   (232,  8, u),
-        "to_bow":     (240,  9, u),
-        "to_stern":   (249,  9, u),
-        "to_port":    (258,  6, u),
-        "to_stbd":    (264,  6, u),
-        "epfd":       (270,  4, u),
-        "month":      (274,  4, u),
-        "day":        (278,  5, u),
-        "hour":       (283,  5, u),
-        "minute":     (288,  6, u),
-        "draft":      (294,  8, lambda nbits,payload:payload/10),
-        "dest":       (302,120, t),
-        "dte":        (422,  1, b),
-    },
-    8:{
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "dac":(40,10,u),
-        "fid":(50,6,u)
-    },
-    15:{
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "mmsi1": (40,30,u),
-        "type1_1":(70,6,u),
-        "offset1_1":(76,12,u)
-    },
-    18:{
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "speed":(46,10, lambda nbits,payload:payload/10),
-        "accuracy":(56,1,b),
-        "lon": (57, 28, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-        "lat": (85, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-        "course": (112, 12, lambda nbits, payload: payload / 10),
-        "heading": (124, 9, u),
-        "second": (133, 6, u)
-    },
-    21:{
-        "msgtype": (  0,  6, u),
-        "repeat":  (  6,  2, u),
-        "mmsi":    (  8, 30, u),
-        "aid_type":( 38,  5, u),
-        "name":    ( 43,120,sixbit),
-        "accuracy":(163,  1,b),
-        "lon":     (164, 28, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-        "lat":     (192, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)),
-        "bow":     (219,  9,u),
-        "stern":   (228,  9,u),
-        "port":    (237,  6,u),
-        "stbd":    (243,  6,u)
-    },
-    "24a":{
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "partno":(38,2,u),
-        "shipname":(40,120,sixbit)
-    },
-    "24b": {
-        "msgtype": (0, 6, u),
-        "repeat": (6, 2, u),
-        "mmsi": (8, 30, u),
-        "partno": (38, 2, u),
-        "shiptype": (40, 8, u),
-        "vendorid": (48,18, sixbit),
-        "model":(66,4,u),
-        "serial":(70,20,u),
-        "callsign":(90,42,sixbit),
-        "to_bow":(132,9,u),
-        "to_stern": (141, 9, u),
-        "to_port": (150, 6, u),
-        "to_stbd": (1, 6, u),
-    }
-}
-
-
-def parse_payload(payload,shift=0):
-    nbits,payload=dearmor_payload(payload,shift)
-    msgtype=get_bitfield(nbits,payload,0,6)
-    result={"msgtype": msgtype}
-    if msgtype==24:
-        partno=get_bitfield(nbits,payload,38,2)
-        msgtype=("24a" if partno==0 else "24b")
-    if msgtype in msgtypes:
-        for k,(start,field_len,scale) in msgtypes[msgtype].items():
-            try:
-                result[k]=scale(field_len,get_bitfield(nbits,payload,start,field_len))
-            except ValueError:
-                #This means we requested a field off the end of the data
-                pass
-        if "radio" in result:
-            # decode according to 3.3.7.2.3 from clarification
-            result["syncstate"]=get_bitfield(19,result["radio"],0,2)
-            result["slotout"]=get_bitfield(19,result["radio"],2,3)
-            if result["slotout"] in (3,5,7):
-                result["nstation"]=get_bitfield(19,result["radio"],5,14)
-            elif result["slotout"] in (2,4,6):
-                result["slot"]=get_bitfield(19,result["radio"],5,14)
-            elif result["slotout"]==1:
-                result["utch"]=get_bitfield(19,result["radio"],5,5)
-                result["utcm"]=get_bitfield(19,result["radio"],10,7)
-            elif result["slotout"] == 0:
-                result["slotofs"] = get_bitfield(19, result["radio"], 5, 14)
-    return result
+class EPFD(Enum):
+    UNDEFINED = 0
+    GPS = 1
+    GLONASS = 2
+    COMBINED_GPS_GLONASS = 3
+    LORAN_C = 4
+    CHAYKA = 5
+    INTEGRATED_NAV_SYS = 6
+    SURVEYED = 7
+    GALILEO = 8
+    RESERVED9 = 9
+    RESERVED10 = 10
+    RESERVED11 = 11
+    RESERVED12 = 12
+    RESERVED13 = 13
+    RESERVED14 = 14
+    INTERNAL_GNSS = 15
 
 
 def parse_aivdm(msg):
+    if not hasattr(parse_aivdm,'frags'):
+        # Dictionary of lists of fragments. Key is fragid, value is list of payloads. Once all payloads
+        # are collected, they are concatenated and parsed, then removed from dict.
+        parse_aivdm.frags={}
     parts=msg.split(",")
     nfrag=int(parts[1])
     ifrag=int(parts[2])
@@ -370,29 +229,581 @@ def parse_aivdm(msg):
     bitsleft=int(parts[6])
     if nfrag>1:
         fragid=int(parts[3])
-        if fragid not in frags:
-            frags[fragid]=[None]*nfrag
-        frags[fragid][ifrag-1]=payload
+        if fragid not in parse_aivdm.frags:
+            parse_aivdm.frags[fragid]=[None]*nfrag
+        parse_aivdm.frags[fragid][ifrag-1]=payload
         if ifrag<nfrag:
             assert bitsleft==0,"Nonzero number of bits left in nonfinal fragment"
-        if None not in frags[fragid]:
+        if None not in parse_aivdm.frags[fragid]:
             #concatenate payloads
-            payload="".join(frags[fragid])
+            payload="".join(parse_aivdm.frags[fragid])
             #now remove frags from dict
-            del frags[fragid]
-            try:
-                return parse_payload(payload,bitsleft)
-            except Exception:
-                import traceback
-                traceback.print_exc()
+            del parse_aivdm.frags[fragid]
+            return parse_payload(payload,bitsleft)
+        else:
+            return None
     else:
+        return parse_payload(payload, bitsleft)
+
+
+def parse_payload(payload, shift=0):
+    nbits, payload = dearmor_payload(payload, shift)
+    msgtype = get_bitfield(nbits, payload, 0, 6)
+    if msgtype == 24:
+        partno = get_bitfield(nbits, payload, 38, 2)
+        msgtype = ("24a" if partno == 0 else "24b")
+    if msgtype==6:
+        dac = get_bitfield(nbits, payload, 72, 10)
+        fid = get_bitfield(nbits, payload, 82, 6)
+        msgtype=(6,dac,fid)
+        if msgtype not in parse_payload.classes:
+            warnings.warn(f"Unhandled type 6 subtype {dac=}, {fid=}")
+            msgtype=6
+    if msgtype==0:
+        return None
+    if msgtype not in parse_payload.classes:
+        raise NotHandled(f"No handler for message type {msgtype}\n{payload:x}")
+    return parse_payload.classes[msgtype](nbits,payload)
+parse_payload.classes={}
+def register_msg(msgtype,msgcls):
+    parse_payload.classes[msgtype]=msgcls
+    if type(msgtype)==tuple:
+        msgcls.table_name=f'ais_{"_".join([str(x) for x in msgtype])}'
+    else:
+        msgcls.table_name=f'ais_{msgtype}'
+
+
+def e(cls):
+    def inner(n,payload):
         try:
-            return parse_payload(payload, bitsleft)
-        except Exception:
-            import traceback
-            traceback.print_exc()
+            return cls(payload)
+        except ValueError:
+            return None
+    return inner
 
 
+def aismsg(msgcls):
+    def compile(pktcls: dataclass) -> None:
+        """
+        Compile a field_dict from the form that most closely matches the
+        book to something more usable at runtime
+
+        :param pktclass: Dataclass with names annotated with field(...,metadata=md()).
+        :return: named tuple
+          * b: number of bytes before repeating block
+          * m: number of bytes in repeating block
+          * c: number of bytes after repeating block
+          for the following, ? is header, block, or footer
+          * *_fields: iterable of header field names in order (possibly empty)
+          * *_type: string suitable for handing to struct.unpack, for names before repeating block
+          * *_unpack: iterable of index of struct.unpack result to use for this field
+          * *_scale: iterable of lambdas which scale the field for names before repeating block
+          * *_units: iterable units for names before repeating block
+          * *_b0: iterable of bitfield position 0, if this is a bitfield.
+          * *_b1: iterable of bitfield position 1, if this is a bitfield.
+
+        At parse time, the number of repeats of the repeating block is determined as follows:
+
+        d: full packet size
+        n: number of repeats
+        d=b+m*n+c
+        d-b-c=m*n
+        (d-b-c)/m=n
+        """
+
+        units = []
+        record_names = []
+        has_cache=False
+        for field in fields(pktcls):
+            if field.metadata.get('record', True):
+                record_names.append(field.name)
+            if field.metadata.get('cache', False):
+                has_cache=True
+            units.append(field.metadata.get('unit',None))
+        b, m, c = None, None, None
+        header_fields, block_fields, footer_fields = None, None, None
+        header_types, block_types, footer_types = None, None, None
+        header_scale, block_scale, footer_scale = None, None, None
+        header_units, block_units, footer_units = units, None, None
+        header_format, block_format, footer_format = None, None, None
+        header_widths, block_widths, footer_widths = None, None, None
+        header_b0, block_b0, footer_b0 = None, None, None
+        header_b1, block_b1, footer_b1 = None, None, None
+        header_unpack, block_unpack, footer_unpack = None, None, None
+        header_records, block_records, footer_records = record_names, [], []
+        pktcls.compiled_form = namedtuple("packet_desc",
+                                          "b m c hn ht hs hu hf hw h0 h1 hp hq bn bt bs bu bf bw b0 b1 bp bq fn ft fs fu ff fw f0 f1 fp fq")._make(
+            (b, m, c,
+             header_fields, header_types, header_scale, header_units, header_format, header_widths, header_b0,
+             header_b1, header_unpack, header_records,
+             block_fields, block_types, block_scale, block_units, block_format, block_widths, block_b0, block_b1,
+             block_unpack, block_records,
+             footer_fields, footer_types, footer_scale, footer_units, footer_format, footer_widths, footer_b0,
+             footer_b1, footer_unpack, footer_records))
+
+    def __init__(self, nbits:int,payload: int):
+        for field in fields(self):
+            if "b0" in field.metadata:
+                raw=get_bitfield(nbits, payload, field.metadata["b0"], field.metadata["nb"])
+                if raw is None or ("nan" in field.metadata and raw==field.metadata["nan"]):
+                    setattr(self,field.name,None)
+                else:
+                    setattr(self,field.name,field.metadata["scale"](field.metadata["nb"],raw))
+        if hasattr(self,"fixup"):
+            self.fixup()
+    msgcls.__init__ = __init__
+    if hasattr(msgcls,'radio'):
+        msgcls.syncstate = None
+        msgcls.slotout = None
+        msgcls.nstation = None
+        msgcls.slot = None
+        msgcls.utch = None
+        msgcls.utcm = None
+        msgcls.slotofs = None
+        msgcls.__annotations__["syncstate"] = int
+        msgcls.__annotations__["slotout"] = int
+        msgcls.__annotations__["nstation"] = int
+        msgcls.__annotations__["slot"] = int
+        msgcls.__annotations__["utch"] = int
+        msgcls.__annotations__["utcm"] = int
+        msgcls.__annotations__["slotofs"] = int
+        def fixup_radio(self):
+            if self.radio is not None:
+                # decode according to 3.3.7.2.3 from clarification
+                self.syncstate = get_bitfield(19, self.radio, 0, 2)
+                self.slotout = get_bitfield(19, self.radio, 2, 3)
+                if self.slotout in (3, 5, 7):
+                    self.nstation = get_bitfield(19, self.radio, 5, 14)
+                elif self.slotout in (2, 4, 6):
+                    self.slot = get_bitfield(19, self.radio, 5, 14)
+                elif self.slotout == 1:
+                    this_h=get_bitfield(19, self.radio, 5, 5)
+                    this_m=get_bitfield(19, self.radio, 10, 7)
+                    if this_h<24 and this_m<60:
+                        self.utch = this_h
+                        self.utcm = this_m
+                elif self.slotout == 0:
+                    self.slotofs = get_bitfield(19, self.radio, 5, 14)
+        if hasattr(msgcls,'fixup'):
+            old_fixup=msgcls.fixup
+            def new_fixup(self):
+                fixup_radio(self)
+                old_fixup(self)
+            msgcls.fixup=new_fixup
+        else:
+            msgcls.fixup=fixup_radio
+    msgcls.utc_xmit = None
+    msgcls.__annotations__["utc_xmit"] = datetime
+    msgcls.utc_recv = None
+    msgcls.__annotations__["utc_recv"] = datetime
+    msgcls=dataclass(msgcls)
+    compile(msgcls)
+    msgcls.use_epoch=False
+    return msgcls
+
+
+def md(b0:int,nb:int,scale:Callable[[int,int],Any], **kwargs):
+    """
+    Annotate a field with the necessary data to extract it from a binary packet. Raw type is required, any
+    other named parameter will be included in the resulting metadata dictionary. Any value may be provided,
+    but parameters below have special meaning to other parts of the code.
+
+    :param raw_type: type of raw data in UBX form (UBX manual 3.3.5) field type in the binary packet data
+              U1 - unsigned 8-bit int (B)
+              I1 - signed 8-bit int (b)
+              X1 - 8-bit bitfield or padding, treat as unsigned to make bit-manipulation easier (B)
+              U2 - unsigned 16-bit int (<H)
+              I2 - signed 16-bit int (<h)
+              X2 - 16-bit bitfield (<H)
+              U4 - unsigned 32-bit int (<I)
+              I4 - signed 32-bit int (<i)
+              X4 - 32-bit bitfield (<I)
+              R4 - IEEE-754 32-bit floating point (<f)
+              R8 - IEEE-754 64-bit floating point (<d)
+    :param scale: either a number or a callable. If a number, the raw value in the binary data
+               is multiplied by this value to get the scaled value. If a callable, it must
+               take a single parameter and will be passed the raw binary data.
+               The return type should match the declared type of the field. Default will
+               result in the scaled value being the same type and value as the raw value.
+    :param unit: Unit of the final scaled value. Generally we will scale values such that the
+               units can be an SI base or derived unit with no prefixes -- IE if a field is
+               integer milliseconds, use a scale of 1e-3 and declare the units to be "s" for
+               seconds. Default is no unit.
+    :param fmt: Format string for displaying the field
+    :param b1: declares the value as a bitfield. All consecutive fields with the same type
+               are considered to be the same bitfield. This is the lower bit (LSB is bit 0)
+    :param b0: First bit in bitfield
+    :param nb: Number of bits in bitfield
+    :param comment: Used to add the appropriate comment to the table field
+    :param
+    :return: A dictionary appropriate for passing to field(metadata=)
+    """
+    kwargs['b0']=b0
+    kwargs['nb']=nb
+    kwargs['scale']=scale
+    return kwargs
+
+
+def utcsec(nbits,payload):
+    if payload<60:
+        return payload
+    return None
+
+
+@aismsg
+class posA(Packet):
+    msgtype :int   =field(metadata=md(  0, 6, u))
+    repeat  :int   =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int   =field(metadata=md(  8,30, u,index=True))
+    status  :Status=field(metadata=md(38, 4, e(Status)))
+    @staticmethod
+    def scale_turn(nbits, payload):
+        payload = signed(nbits, payload)
+        if payload == 0:
+            return 0
+        elif abs(payload) <= 126:
+            return (abs(payload)/4.733)**2 * (1 if payload > 0 else -1)
+        elif abs(payload) == 127:
+            return float('Inf') * (1 if payload > 0 else -1)
+        else:
+            return float('NaN')
+    turn    :float =field(metadata=md( 42, 8, scale_turn))
+    speed   :float =field(metadata=md( 50,10, lambda nbits,payload:payload/10,nan=511))
+    accuracy:bool  =field(metadata=md( 60, 1, b))
+    lon     :float =field(metadata=md( 61,28, lambda nbits,payload:signed(nbits,payload)/(60*10000),nan=181*60*10000))
+    lat     :float =field(metadata=md( 89,27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),nan=91*60*10000))
+    course  :float =field(metadata=md(116,12, lambda nbits,payload:payload/10,nan=3600))
+    heading :int   =field(metadata=md(128, 9, u,nan=511))
+    second  :int   =field(metadata=md(137, 6, utcsec))
+    maneuver:Maneuver =field(metadata=md(143, 2, e(Maneuver)))
+    raim    :bool  =field(metadata=md(148, 1, b))
+    radio   :int   =field(metadata=md(149,19, u,record=False))
+register_msg(1,posA)
+register_msg(2,posA)
+register_msg(3,posA)
+
+
+@aismsg
+class msg4(Packet):
+    msgtype :int  =field(metadata=md(  0, 6, u))
+    repeat  :int  =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int  =field(metadata=md(  8,30, u,index=True))
+    year    :int  =field(metadata=md(38, 14, u,nan=0))
+    month   :int  =field(metadata=md(52, 4, u,nan=0))
+    day     :int  =field(metadata=md(56, 5, u,nan=0))
+    hour    :int  =field(metadata=md(61, 5, u,nan=24))
+    minute  :int  =field(metadata=md(66, 6, u,nan=60))
+    second  :int  =field(metadata=md(72, 6, utcsec))
+    accuracy:bool =field(metadata=md(78, 1, b))
+    lon     :float=field(metadata=md(79, 28, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),nan=181*60*10000))
+    lat     :float=field(metadata=md(107, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),nan=91*60*10000))
+    epfd    :EPFD =field(metadata=md(134, 4, e(EPFD)))
+    raim    :bool =field(metadata=md(148, 1, b))
+    radio   :int  =field(metadata=md(149, 19, u,record=False))
+register_msg(11,msg4)
+register_msg( 4,msg4)
+
+
+@aismsg
+class msg5(Packet):
+    msgtype:int  =field(metadata=md(0, 6, u,record=False))
+    repeat:int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:int  =field(metadata=md(8, 30, u,index=True,cacheindex=True))
+    ais_version: int  =field(metadata=md(38, 2, u))
+    imo: int  =field(metadata=md(40, 30, u,cache=True))
+    callsign: str  =field(metadata=md(70, 42, t,cache=True))
+    shipname: str  =field(metadata=md(112, 120, t,cache=True))
+    shiptype: int  =field(metadata=md(232, 8, u,cache=True))
+    to_bow: int  =field(metadata=md(240, 9, u,cache=True))
+    to_stern: int  =field(metadata=md(249, 9, u,cache=True))
+    to_port: int  =field(metadata=md(258, 6, u,cache=True))
+    to_stbd: int  =field(metadata=md(264, 6, u,cache=True))
+    epfd: int  =field(metadata=md(270, 4, u,cache=True))
+    month: int  =field(metadata=md(274, 4, u,cache=True))
+    day: int  =field(metadata=md(278, 5, u,cache=True))
+    hour: int  =field(metadata=md(283, 5, u,cache=True))
+    minute: int  =field(metadata=md(288, 6, u,cache=True))
+    draft: float  =field(metadata=md(294, 8, lambda nbits, payload: payload / 10,cache=True))
+    dest: str  =field(metadata=md(302, 120, t,cache=True))
+    dte: bool  =field(metadata=md(422, 1, b,cache=True))
+register_msg(5,msg5)
+
+
+@aismsg
+class msg6(Packet):
+    msgtype: int  =field(metadata=md(0, 6, u,record=False))
+    repeat:  int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:    int  =field(metadata=md(8, 30, u))
+    seqno:   int  =field(metadata=md(38, 2, u))
+    dest_mmsi:int =field(metadata=md(40, 30, u))
+    retransmit:bool=field(metadata=md(70, 1, b))
+    dac:     int  =field(metadata=md(72,10, u))
+    fid:     int  =field(metadata=md(82, 6, u))
+    data:    str  =field(metadata=md(88,920, lambda n, payload: f"{payload:x}"))
+register_msg(6,msg6)
+
+
+@aismsg
+class msg6_1_0(Packet):
+    msgtype: int  =field(metadata=md(0, 6, u,record=False))
+    repeat:  int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:    int  =field(metadata=md(8, 30, u))
+    seqno:   int  =field(metadata=md(38, 2, u))
+    dest_mmsi:int =field(metadata=md(40, 30, u))
+    retransmit:bool=field(metadata=md(70, 1, b))
+    dac:     int  =field(metadata=md(72,10, u))
+    fid:     int  =field(metadata=md(82, 6, u))
+    ack_reqd:bool=field(metadata=md(88, 1, b))
+    text_seq:int =field(metadata=md(89,11, u))
+    txt:    str  =field(metadata=md(100,906, t))
+register_msg((6,1,0),msg6_1_0)
+
+
+@aismsg
+class msg7(Packet):
+    msgtype: int  =field(metadata=md( 0, 6, u))
+    repeat:  int  =field(metadata=md( 6, 2, u,record=False))
+    mmsi:    int  =field(metadata=md( 8,30, u))
+    mmsi1:   int  =field(metadata=md(40+32*(1-1),30, u))
+    mmsiseq1:int  =field(metadata=md(70+32*(1-1), 2, u))
+    mmsi2   :int = field(metadata=md(40+32*(2-1),30, u))
+    mmsiseq2:int = field(metadata=md(70+32*(2-1), 2, u))
+    mmsi3   :int = field(metadata=md(40+32*(3-1),30, u))
+    mmsiseq3:int = field(metadata=md(70+32*(3-1), 2, u))
+    mmsi4   :int = field(metadata=md(40+32*(4-1),30, u))
+    mmsiseq4:int = field(metadata=md(70+32*(4-1), 2, u))
+register_msg(13,msg7)
+register_msg( 7,msg7)
+
+
+@aismsg
+class msg8(Packet):
+    msgtype: int  =field(metadata=md(0, 6, u,record=False))
+    repeat:  int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:    int  =field(metadata=md(8, 30, u))
+    dac:     int  =field(metadata=md(40, 10, u))
+    fid:     int  =field(metadata=md(50, 6, u))
+register_msg(8,msg8)
+
+
+@aismsg
+class msg9(Packet):
+    msgtype :int  =field(metadata=md(  0, 6, u,record=False))
+    repeat  :int  =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int  =field(metadata=md(  8,30, u))
+    alt     :int  =field(metadata=md( 38,12, u))
+    speed   :int  =field(metadata=md( 50,10, u))
+    accuracy:bool =field(metadata=md( 60, 1, b))
+    lon     :float=field(metadata=md( 61,28,lambda nbits, payload: signed(nbits, payload) / (60 * 10000)))
+    lat     :float=field(metadata=md( 89,27,lambda nbits, payload: signed(nbits, payload) / (60 * 10000)))
+    course  :int  =field(metadata=md(116,12, u))
+    second  :int  =field(metadata=md(128, 6, utcsec))
+    regional:int  =field(metadata=md(134, 8, u))
+    dte     :bool =field(metadata=md(142, 1, b))
+    assigned:bool =field(metadata=md(146, 1, b))
+    raim    :bool =field(metadata=md(147, 1, b))
+    radio   :int  =field(metadata=md(148,20, u,record=False))
+register_msg(9,msg9)
+
+
+@aismsg
+class msg10(Packet):
+    msgtype  :int  =field(metadata=md(  0, 6, u,record=False))
+    repeat   :int  =field(metadata=md(  6, 2, u,record=False))
+    mmsi     :int  =field(metadata=md(  8,30, u,index=True))
+    dest_mmsi:int  =field(metadata=md(40,30, u))
+register_msg(10,msg10)
+
+
+@aismsg
+class msg12(Packet):
+    msgtype :int  =field(metadata=md(  0, 6, u,record=False))
+    repeat  :int  =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int  =field(metadata=md(  8,30, u,index=True))
+    seqno   :int  =field(metadata=md(38, 2, u))
+    dest_mmsi:int  =field(metadata=md(40,30, u))
+    retransmit:bool =field(metadata=md(70, 1, b))
+    text    :str  =field(metadata=md(72, 936, t))
+register_msg(12,msg12)
+
+
+@aismsg
+class msg14(Packet):
+    msgtype :int  =field(metadata=md(  0, 6, u,record=False))
+    repeat  :int  =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int  =field(metadata=md(  8,30, u,index=True))
+    text    :str  =field(metadata=md(40, 968, t))
+register_msg(14,msg14)
+
+
+@aismsg
+class msg15(Packet):
+    msgtype:      int  =field(metadata=md(0, 6, u,record=False))
+    repeat:      int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:      int  =field(metadata=md(8, 30, u))
+    mmsi1:      int  =field(metadata=md(40, 30, u))
+    type1_1:      int  =field(metadata=md(70, 6, u))
+    offset1_1:      int  =field(metadata=md(76, 12, u))
+register_msg(15,msg15)
+
+
+@aismsg
+class msg17(Packet):
+    msgtype :int  =field(metadata=md( 0, 6, u,record=False))
+    repeat  :int  =field(metadata=md( 6, 2, u,record=False))
+    mmsi    :int  =field(metadata=md( 8,30, u,index=True))
+    lon     :float=field(metadata=md(40,18,lambda nbits, payload: signed(nbits, payload) / (60 * 10)))
+    lat     :float=field(metadata=md(58,17,lambda nbits, payload: signed(nbits, payload) / (60 * 10)))
+    data    :str  =field(metadata=md(80,736,lambda n, payload: f"{payload:x}"))
+register_msg(17,msg17)
+
+
+@aismsg
+class msg18(Packet):
+    msgtype:      int=field(metadata=md(0, 6, u,record=False))
+    repeat:       int=field(metadata=md(6, 2, u,record=False))
+    mmsi:         int=field(metadata=md(8, 30, u))
+    speed:        float=field(metadata=md(46, 10, lambda nbits, payload: payload / 10))
+    accuracy:     bool=field(metadata=md(56, 1, b))
+    lon:          float=field(metadata=md(57, 28, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)))
+    lat:          float=field(metadata=md(85, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000)))
+    course:       float=field(metadata=md(112, 12, lambda nbits, payload: payload / 10))
+    heading:      int=field(metadata=md(124, 9, u))
+    second:       int=field(metadata=md(133, 6, utcsec))
+register_msg(18,msg18)
+
+
+@aismsg
+class msg20(Packet):
+    msgtype:      int=field(metadata=md( 0,  6, u,record=False))
+    repeat:       int=field(metadata=md( 6,  2, u,record=False))
+    mmsi:         int=field(metadata=md( 8, 30, u))
+    offset1:      int=field(metadata=md(40+30*(1-1), 12, u))
+    number1:      int=field(metadata=md(52+30*(1-1),  4, u))
+    timeout1:     int=field(metadata=md(56+30*(1-1),  3, u))
+    increment1:   int=field(metadata=md(59+30*(1-1), 11, u))
+    offset2:      int=field(metadata=md(40+30*(2-1), 12, u))
+    number2:      int=field(metadata=md(52+30*(2-1),  4, u))
+    timeout2:     int=field(metadata=md(56+30*(2-1),  3, u))
+    increment2:   int=field(metadata=md(59+30*(2-1), 11, u))
+    offset3:      int=field(metadata=md(40+30*(3-1), 12, u))
+    number3:      int=field(metadata=md(52+30*(3-1),  4, u))
+    timeout3:     int=field(metadata=md(56+30*(3-1),  3, u))
+    increment3:   int=field(metadata=md(59+30*(3-1), 11, u))
+    offset4:      int=field(metadata=md(40+30*(4-1), 12, u))
+    number4:      int=field(metadata=md(52+30*(4-1),  4, u))
+    timeout4:     int=field(metadata=md(56+30*(4-1),  3, u))
+    increment4:   int=field(metadata=md(59+30*(4-1), 11, u))
+register_msg(20,msg20)
+
+
+@aismsg
+class msg21(Packet):
+    msgtype:      int=field(metadata=md(0, 6, u,record=False))
+    repeat:      int=field(metadata=md(6, 2, u,record=False))
+    mmsi:      int=field(metadata=md(8, 30, u,cacheindex=True))
+    class AidTypes(Enum):
+        Default=0
+        Reference_point=1
+        RACON=2
+        Fixed_structure_offshore=3
+        Spare4=4
+        Light_without_sectors=5
+        Light_with_sectors=6
+        Leading_Light_Front=7
+        Leading_Light_Rear=8
+        Beacon_Cardinal_N=9
+        Beacon_Cardinal_E=10
+        Beacon_Cardinal_S=11
+        Beacon_Cardinal_W=12
+        Beacon_Port=13
+        Beacon_Stbd = 14
+        Beacon_Preferred_Channel_Port = 15
+        Beacon_Preferred_Channel_Stbd = 16
+        Beacon_Isolated_Danger = 17
+        Beacon_Safe_Water=18
+        Beacon_Special_Mark = 19
+        Cardinal_Mark_N = 20
+        Cardinal_Mark_E = 21
+        Cardinal_Mark_S = 22
+        Cardinal_Mark_W = 23
+        Port_Mark = 24
+        Stbd_Mark = 25
+        Preferred_Channel_Port = 26
+        Preferred_Channel_Stbd = 27
+        Isolated_Danger = 28
+        Safe_Water = 29
+        Special_Mark = 30
+        Light_Vessel = 31
+    aid_type:      AidTypes=field(metadata=md(38, 5, lambda nbits,payload:msg21.AidTypes(payload),cache=True))
+    name:      str=field(metadata=md(43, 120, sixbit,cache=True))
+    accuracy:      bool=field(metadata=md(163, 1, b,cache=True))
+    lon:      float=field(metadata=md(164, 28, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),cache=True))
+    lat:      float=field(metadata=md(192, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),cache=True))
+    bow:      int=field(metadata=md(219, 9, u,cache=True))
+    stern:      int=field(metadata=md(228, 9, u,cache=True))
+    port:      int=field(metadata=md(237, 6, u,cache=True))
+    stbd:      int=field(metadata=md(243, 6, u,cache=True))
+    epfd    :EPFD =field(metadata=md(249, 4, e(EPFD),cache=True))
+    second  :int = field(metadata=md(253, 6, utcsec))
+    off_position: bool = field(metadata=md(259, 1, b,cache=True))
+    regional: int = field(metadata=md(260, 8, u,cache=True))
+    raim    :bool  =field(metadata=md(268, 1, b,cache=True))
+    virtual: bool = field(metadata=md(269, 8, b,cache=True))
+    assigned: bool = field(metadata=md(270, 8, b,cache=True))
+register_msg(21,msg21)
+
+
+@aismsg
+class msg24a(Packet):
+    msgtype:      int  =field(metadata=md (0, 6, u,record=False))
+    repeat:      int  =field(metadata=md (6, 2, u,record=False))
+    mmsi:      int  =field(metadata=md (8, 30, u))
+    partno:      int  =field(metadata=md(38,2,u))
+    shipname:      str  =field(metadata=md(40,120,sixbit))
+register_msg("24a",msg24a)
+
+
+@aismsg
+class msg24b(Packet):
+    msgtype:    int  =field(metadata=md(0, 6, u,record=False))
+    repeat:     int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:       int  =field(metadata=md(8, 30, u))
+    partno:     int  =field(metadata=md(38, 2, u))
+    shiptype:   int  =field(metadata=md(40, 8, u))
+    vendorid:   str  =field(metadata=md(48, 18, sixbit))
+    model:      int  =field(metadata=md(66, 4, u))
+    serial:     int  =field(metadata=md(70, 20, u))
+    callsign:   str  =field(metadata=md(90, 42, sixbit))
+    to_bow:     int  =field(metadata=md(132, 9, u))
+    to_stern:   int  =field(metadata=md(141, 9, u))
+    to_port:    int  =field(metadata=md(150, 6, u))
+    to_stbd:    int  =field(metadata=md(156, 6, u))
+register_msg("24b",msg24b)
+
+
+@aismsg
+class msg27(Packet):
+    msgtype :int   =field(metadata=md(  0, 6, u,record=False))
+    repeat  :int   =field(metadata=md(  6, 2, u,record=False))
+    mmsi    :int   =field(metadata=md(  8,30, u,index=True))
+    accuracy:bool  =field(metadata=md( 38, 1, b))
+    raim    :bool  =field(metadata=md( 39, 1, b))
+    status  :Status=field(metadata=md( 40, 4, e(Status)))
+    lon     :float =field(metadata=md( 44,18, lambda nbits,payload:signed(nbits,payload)/(60*10)))
+    lat     :float =field(metadata=md( 62,17, lambda nbits, payload: signed(nbits, payload) / (60 * 10)))
+    speed   :int   =field(metadata=md( 79, 6, u))
+    course  :int   =field(metadata=md( 85, 9, u))
+    gnss    :bool  =field(metadata=md( 94, 1, lambda nbits,payload:not bool(payload)))
+register_msg(27,msg27)
+
+
+def ensure_tables(db:Database,drop:bool=False):
+    for msgtype,msgdef in parse_payload.classes.items():
+        ensure_table(db,msgdef,drop=drop,table_name=msgdef.table_name)
+
+
+"""
 def fix_shipname(inname:str):
     outname=""
     for char in inname:
@@ -402,176 +813,8 @@ def fix_shipname(inname:str):
     return outname
 
 
-def save_path(track:list[dict],oufn:str,shipname:str):
-    """
-
-    :param track:
-    :param oufn:
-    :return:
-    """
-    with open(oufn,"wt") as ouf:
-        print(fr"""<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
-<Document>
-	<name>{shipname}</name>
-	<Style id="s_ylw-pushpin">
-		<IconStyle>
-			<scale>1.1</scale>
-			<Icon>
-				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
-			</Icon>
-			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
-		</IconStyle>
-	</Style>
-	<StyleMap id="m_ylw-pushpin">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#s_ylw-pushpin</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Style id="s_ylw-pushpin_hl">
-		<IconStyle>
-			<scale>1.3</scale>
-			<Icon>
-				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
-			</Icon>
-			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
-		</IconStyle>
-	</Style>
-	<Placemark>
-		<name>Untitled Path</name>
-		<styleUrl>#m_ylw-pushpin</styleUrl>
-		<LineString>
-			<tessellate>1</tessellate>
-			<coordinates>""",file=ouf)
-        for msg in track:
-            print(f"{msg['lon']},{msg['lat']},0",file=ouf)
-        print(r"""			</coordinates>
-		</LineString>
-	</Placemark>
-</Document>
-</kml>
-""",file=ouf)
-
-
-colors=[
-    "000000",
-    "aa5500",
-    "ff0000",
-    "ffaa00",
-    "ffff00",
-    "00ff00",
-    "0000ff",
-    "aa00ff",
-    "888888",
-    "ffffff"
-]
-
-
-def save_track(dts:list[datetime],track:list[dict],oufn:str,shipname:str,i_day:int):
-    """
-
-    :param track:
-    :param oufn:
-    :return:
-    """
-    d={}
-    for dt,msg in zip(dts,track):
-        d[dt]=msg
-    sorted_dts=sorted(d.keys())
-    with open(oufn,"wt") as ouf:
-        print(fr"""<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
-<Document>
-	<name>{basename(oufn)}</name>
-	<Style id="multiTrack_n">
-		<IconStyle>
-			<Icon>
-				<href>http://earth.google.com/images/kml-icons/track-directional/track-0.png</href>
-			</Icon>
-		</IconStyle>
-		<LineStyle>
-			<color>99{colors[i_day%10][::-1]}</color>
-			<width>6</width>
-		</LineStyle>
-	</Style>
-	<Style id="multiTrack_h">
-		<IconStyle>
-			<scale>1.2</scale>
-			<Icon>
-				<href>http://earth.google.com/images/kml-icons/track-directional/track-0.png</href>
-			</Icon>
-		</IconStyle>
-		<LineStyle>
-			<color>99{colors[i_day%10][::-1]}</color>
-			<width>8</width>
-		</LineStyle>
-	</Style>
-	<StyleMap id="multiTrack">
-		<Pair>
-			<key>normal</key>
-			<styleUrl>#multiTrack_n</styleUrl>
-		</Pair>
-		<Pair>
-			<key>highlight</key>
-			<styleUrl>#multiTrack_h</styleUrl>
-		</Pair>
-	</StyleMap>
-	<Placemark>
-		<name>{shipname}</name>
-		<styleUrl>#multiTrack</styleUrl>
-		<gx:balloonVisibility>1</gx:balloonVisibility>
-		<gx:Track>
-    		<gx:altitudeMode>clampToSeaFloor</gx:altitudeMode>""",file=ouf)
-        for dt in sorted_dts:
-            print(f"			<when>{dt.isoformat()[0:19]}Z</when>",file=ouf)
-        for dt in sorted_dts:
-            msg=d[dt]
-            print(f"			<gx:coord>{msg['lon']} {msg['lat']} 0</gx:coord>",file=ouf)
-        print(r"""		</gx:Track>
-	</Placemark>
-</Document>
-</kml>""",file=ouf)
-
-
 dream=311042900
-
 trust_mmsi=(dream,)
-
-
-def make_utc(y=None,m=None,d=None,h=None,n=None,s=None,match=None,local=False,tzname="America/Denver"):
-    if match is not None:
-        y=match.group("year")
-        m = match.group("month")
-        d = match.group("day")
-        h = match.group("hour")
-        n = match.group("minute")
-        s = match.group("second")
-    if type(y) is str:
-        y=2000+int(y)%100
-    if type(m) is str:
-        m=int(m)
-    if type(d) is str:
-        d=int(d)
-    if type(h) is str:
-        h=int(h)
-    if type(n) is str:
-        n=int(n)
-    if type(s) is str:
-        s=int(s)
-    if local:
-        dt = pytz.timezone(tzname).localize(datetime(year=y, month=m, day=d,
-                                                     hour=h, minute=n, second=s,
-                                                     microsecond=0)).astimezone(pytz.utc)
-    else:
-        dt = pytz.utc.localize(datetime(year=y, month=m, day=d,
-                                        hour=h, minute=n, second=s,
-                                        microsecond=0))
-    return dt
 
 
 ttycat_fn_timestamp=re.compile(r"daisy_(?P<year>[0-9][0-9])(?P<month>[0-9][0-9])(?P<day>[0-9][0-9])"
@@ -767,5 +1010,12 @@ def main():
 if __name__=="__main__":
     main()
 
+"""
 
+def main():
+    exercise_get_bitfield()
+
+
+if __name__=="__main__":
+    main()
 
