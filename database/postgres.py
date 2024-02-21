@@ -21,9 +21,23 @@ def _postgres_escape_string(s):
 
 
 class PostgresDatabase(Database):
+    def __init__(self,database:str,user:str,password:str,
+                 schema:str=None,drop_schema:bool=False,ensure_schema:bool=True,
+                 **kwargs):
+        super().__init__(database,user,password,**kwargs)
+        self.schema=schema
+        self.drop_schema=drop_schema
+        self.ensure_schema=ensure_schema
     def connect(self):
         conn=psycopg.connect(conninfo=f"dbname={self.database} user={self.user} password={self.password}",autocommit=True,**self.kwargs)
         conn.execute("SET TIMEZONE TO 'UTC';")
+        if self.schema is not None:
+            with conn.transaction():
+                if self.drop_schema:
+                    conn.execute(f"DROP SCHEMA IF EXISTS {self.schema} CASCADE;")
+                if self.ensure_schema:
+                    conn.execute(f"CREATE SCHEMA IF NOT EXISTS {self.schema};")
+                conn.execute(f"SET SEARCH_PATH={self.schema};")
         return conn
     def transaction(self):
         return self._conn.transaction()
