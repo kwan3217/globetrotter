@@ -412,7 +412,7 @@ class UBX_NAV_ORB(UBloxPacket):
     """This message combines position, velocity and time solution, including accuracy figures."""
     iTOW         :Decimal  =field(metadata=bin_field("U4", unit="s", scale=Decimal('1e-3'), fmt="%10.3f",
                                                      comment="GPS time of week of the navigation epoch."))
-    version      :int      =field(metadata=bin_field("U1"))
+    version      :int      =field(metadata=bin_field("U1",record=False))
     numSv        :int      =field(metadata=bin_field("U1"))
     reserved0    :int      =field(metadata=bin_field("U2",record=False))
     gnssId       :list[GNSSID]=field(metadata=bin_field("U1",scale=GNSSID))
@@ -506,7 +506,7 @@ class UBX_NAV_SAT(UBloxPacket):
     "known to be visible or currently tracked by the receiver. "\
     "All signal related information corresponds to the subset of signals specified in Signal Identifiers."
     iTOW      :Decimal      =field(metadata=bin_field("U4", scale=Decimal('1e-3'), unit="s", fmt="%10.3f"))
-    version   :int          =field(metadata=bin_field("U1",comment="Message version"))
+    version   :int          =field(metadata=bin_field("U1",comment="Message version",record=False))
     numSvs    :int          =field(metadata=bin_field("U1",comment="Number of satellites"))
     reserved0 :int          =field(metadata=bin_field("X2",record=False))
     gnssId    :list[GNSSID] =field(metadata=bin_field("U1",scale=GNSSID,fmt="%10s"),default_factory=list)
@@ -550,7 +550,7 @@ class UBX_NAV_SAT(UBloxPacket):
 class UBX_NAV_COV(UBloxPacket):
     """This message contains information on the timing of the next pulse at the TIMEPULSE0 output."""
     iTOW        :Decimal  =field(metadata=bin_field("U4", scale=Decimal('1e-3'),unit="s"))
-    version     :int      =field(metadata=bin_field("U1",comment="Message version"))
+    version     :int      =field(metadata=bin_field("U1",comment="Message version",record=False))
     posCovValid :bool     =field(metadata=bin_field("U1",scale=bool))
     velCovValid :bool     =field(metadata=bin_field("U1",scale=bool))
     reserved0a  :int      =field(metadata=bin_field("X1",record=False))
@@ -592,7 +592,7 @@ class UBX_NAV_SIG(UBloxPacket):
         DUAL_FREQ = 8
 
     iTOW      :Decimal      =field(metadata=bin_field("U4", scale=Decimal('1e-3'), unit="s", fmt="%10.3f"))
-    version   :int          =field(metadata=bin_field("U1",comment="Message version. This parser only handles version 0x00"))
+    version   :int          =field(metadata=bin_field("U1",comment="Message version",record=False))
     numSigs   :int          =field(metadata=bin_field("U1",comment="Number of signals"))
     reserved0 :int          =field(metadata=bin_field("X2",record=False))
     gnssId    :list[GNSSID] =field(metadata=bin_field("U1",scale=GNSSID,fmt="%10s"),default_factory=list)
@@ -637,7 +637,7 @@ class UBX_NAV_TIMELS(UBloxPacket):
     """This message reports the precise GPS time of the most recent navigation solution including validity flags and
 an accuracy estimate."""
     iTOW      :Decimal=field(metadata=bin_field("U4", unit="s", scale=Decimal('1e-3'), fmt="%10.3f",comment="GPS time of week of the navigation epoch."))
-    version   :int    =field(metadata=bin_field("U1"))
+    version   :int    =field(metadata=bin_field("U1",record=False))
     reserved0a:int    =field(metadata=bin_field("U1",record=False))
     reserved0b:int    =field(metadata=bin_field("U2",record=False))
     class LSSRC(Enum):
@@ -756,7 +756,7 @@ class UBX_NAV_EOE(UBloxPacket):
 @ublox_packet(0x10,0x15,use_epoch=False,required_version=0x01)
 class UBX_ESF_INS(UBloxPacket):
     """This message combines position, velocity and time solution, including accuracy figures."""
-    version      :int          =field(metadata=bin_field("X4",b1=7,b0=0,comment="Message version, only 0x01 is handled here"))
+    version      :int          =field(metadata=bin_field("X4",b1=7,b0=0,comment="Message version",record=False))
     xAngRateValid:bool         =field(metadata=bin_field("X4",scale=bool,b0= 8,comment="Compensated x-axis angular rate data flag is valid"))
     yAngRateValid:bool         =field(metadata=bin_field("X4",scale=bool,b0= 9,comment="Compensated y-axis angular rate data flag is valid"))
     zAngRateValid:bool         =field(metadata=bin_field("X4",scale=bool,b0=10,comment="Compensated z-axis angular rate data flag is valid"))
@@ -779,7 +779,7 @@ class UBX_ESF_ALG(UBloxPacket):
     "rotation from the installation-frame to the IMU-frame. In addition, "\
     "it indicates the automatic IMU-mount alignment status."
     iTOW         :Decimal      =field(metadata=bin_field("U4",scale=Decimal('1e-3'), unit="s", fmt="%10.3f"))
-    version      :int          =field(metadata=bin_field("U1",comment="Message version, only 0x01 is handled here"))
+    version      :int          =field(metadata=bin_field("U1",comment="Message version",record=False))
     autoMntAlgOn :bool         =field(metadata=bin_field("U1",b0=0,scale=bool,comment="Automatic IMU-mount alignment on"))
     class STATUS(Enum):
         USER_DEFINED_FIXED_ANGLES=0
@@ -836,7 +836,7 @@ class UBX_ESF_MEAS(UBloxPacket):
 class UBX_ESF_STATUS(UBloxPacket):
     """This message combines position, velocity and time solution, including accuracy figures."""
     iTOW         :Decimal      =field(metadata=bin_field("U4",scale=Decimal('1e-3'), unit="s", fmt="%10.3f"))
-    version      :int          =field(metadata=bin_field("U1",comment="Message version"))
+    version      :int          =field(metadata=bin_field("U1",comment="Message version",record=False))
     reserved0a   :int          =field(metadata=bin_field("U1",record=False))
     reserved0b   :int          =field(metadata=bin_field("U2",record=False))
     reserved0c   :int          =field(metadata=bin_field("U4",record=False))
@@ -914,7 +914,7 @@ class UBX_RXM_SFRBX(UBloxPacket):
     freqId         :int         =field(metadata=bin_field("U1",comment="GLONASS only"))
     numWords       :int         =field(metadata=bin_field("U1"))
     chn            :int         =field(metadata=bin_field("U1"))
-    version        :int         =field(metadata=bin_field("U1"))
+    version        :int         =field(metadata=bin_field("U1",record=False))
     reserved0      :int         =field(metadata=bin_field("U1",record=False))
     dwrd           :list[int]   =field(metadata=bin_field("U4"))
     def fixup(self):
@@ -948,7 +948,7 @@ leap seconds are known."""))
     numMeas        :int         =field(metadata=bin_field("U1"))
     leapSec        :bool        =field(metadata=bin_field("X1",b0=0,scale=bool))
     clkReset       :bool        =field(metadata=bin_field("X1",b0=1,scale=bool))
-    version        :int         =field(metadata=bin_field("U1"))
+    version        :int         =field(metadata=bin_field("U1",record=False))
     reserved0      :int         =field(metadata=bin_field("U2",record=False))
     prMes          :list[float] =field(metadata=bin_field("R8",unit="m",comment="Pseudorange measurement. GLONASS interfrequency"
                                                                         "channel delays are compensated with an internal "
@@ -994,7 +994,7 @@ overview. Users should not expect highly accurate spectrum amplitude.
 
 Note that the PGA gain is not included in the spectrum data but is available as a separate field. Neither the
 spectrum, nor the PGA gain considers the internal fixed LNA gain or an external third-party LNA."""
-    version:int=field(metadata=bin_field("U1"))
+    version:int=field(metadata=bin_field("U1",record=False))
     numRfBlocks:int=field(metadata=bin_field("U1"))
     reserved0:int=field(metadata=bin_field("U2",record=False))
     spectrum:list[bytes]=field(metadata=bin_field("U[256]"))
@@ -1011,7 +1011,7 @@ class UBX_MON_COMMS(UBloxPacket):
     """Consolidated communications information for all ports. The size of the message is determined by the number
 of ports that are in use on the receiver. A port is only included if communication, either send or receive, has
 been initiated on that port."""
-    version:int=field(metadata=bin_field("U1"))
+    version:int=field(metadata=bin_field("U1",record=False))
     nPorts:int=field(metadata=bin_field("U1"))
     memError:bool=field(metadata=bin_field("U1",b0=0,scale=bool))
     allocError:bool=field(metadata=bin_field("U1",b0=1,scale=bool))
@@ -1056,7 +1056,7 @@ been initiated on that port."""
 @ublox_packet(0x0a,0x38,use_epoch=True,required_version=0x00)
 class UBX_MON_RF(UBloxPacket):
     """Information for each RF block. There are as many RF blocks reported as bands supported by this receiver."""
-    version:int=field(metadata=bin_field("U1"))
+    version:int=field(metadata=bin_field("U1",record=False))
     nPorts:int=field(metadata=bin_field("U1"))
     reserved0:int=field(metadata=bin_field("U2",record=False))
     class BAND(Enum):
