@@ -273,7 +273,15 @@ def compile_ublox(pktcls:dataclass)->None:
     part=0
     i_struct=0
     last_b1=None
+    pktcls.has_cache = False
+    pktcls.cache_index = None
+    pktcls.cache_fields = []
     for field in fields(pktcls):
+        if field.metadata.get("cache", False):
+            pktcls.has_cache = True
+            pktcls.cache_fields.append(field.name)
+        if field.metadata.get("cacheindex"):
+            pktcls.cache_index = field.name
         if field.metadata["type"] is None:
             if 'record' not in field.metadata or field.metadata['record']:
                 record_names[part].append(field.name)
