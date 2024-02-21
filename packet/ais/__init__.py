@@ -1,6 +1,7 @@
 """
-Read a file which contains AIS data. Documentation for it comes from
-https://gpsd.gitlab.io/gpsd/AIVDM.html
+Read a file which contains AIS data. Documentation for it comes from:
+* https://gpsd.gitlab.io/gpsd/AIVDM.html
+*
 
 AIS data recorded by the shipometer contains a few more layers, inconsistently applied:
 
@@ -11,11 +12,61 @@ AIS data recorded by the shipometer contains a few more layers, inconsistently a
 3. Timestamps for each line of received data is prepended, in ISO format. Some
    lines have a bad century (0123 instead of 2023).
 4. (optional) after timestamp, lines are either AIVDM messages as documented above
-   OR debug lines. Each debug line is sent after the reciever receives and checks the message, but
-   before it transmits that message. Debug lines are in the following format:
+   OR debug lines. Each debug line is sent after the reciever receives and checks
+   the message, but before it transmits that message. Debug lines are in the
+   following format:
    Radio1	Channel=A RSSI=-75dBm MsgType=1 MMSI=311042900
 5. AIVDM messages, starting with !AVI and ending with the line. Once we get to this point, we are home free,
    as AIVDM is standardized.
+
+## Timestamps
+AIS is designed for real-time collision avoidance. Logging is secondary. Therefore, the focus
+is on detailed position and velocity vectors, but only just enough time information to account
+for the time lag between a ship taking a GPS fix and broadcasting it.
+
+All AIS packets are recorded in the order that they are received. This does simplify some things,
+as we don't need a sequence number. The speed of light is high enough, the packets are short enough,
+the frequency is low enough, and the ranges are short enough, that each packet is
+transmitted, received, and recorded before the next packet is started. A large part of the AIS
+spec is the self-organization of the transmitters into broadcast slots such that they don't
+step on each other, but if they do, then both packets are lost, and no packets are recorded
+out-of-order.
+
+In the future, we should route the AIS through GPSD. GPSD knows how to read an AIS stream
+from the hardware I have, and does properly record it in its raw output.
+
+As a result:
+* PositionA messages (Type 1, 2, and 3 -- most common and useful ship position reports)
+  contain a UTC second field. The position is presumed to be valid at exactly the given
+  UTC second, but most PositionA fields don't have enough information to disambiguate
+  the rest of the timestamp.
+* Many messages include a radio status. The radio status cycles through several different
+  field types, but one of them includes current UTC hour and UTC minute
+* Type 4 (and type 10) are broadcast by fixed base stations, and include complete UTC date
+  and time to second precision.
+
+I discovered this in the middle of the voyage, and changed the AIS recorder so that the received
+timestamp is recorded in the log as well. On Atlantic23.05, AIS data was recorded on the laptop.
+The laptop was connected by wired ethernet to Fluttershy and was kept in sync with Chrony, so
+the absolute time is believed to be millisecond-accurate or better.
+
+The data was recorded with ttycatnet.cpp, which timestamps each line with the time of receipt
+of the 0x0a (linefeed) before each line. This has the effect of timestamping each line with the
+receipt time of the line *before* it. This is counteracted by the fact that the debug messages
+were on, which means that each timestamp of a message is the actual receipt time of the end of
+the debug message before it, which is fine because the debug message is sent immediately (no
+delay) before the AIVDM message.
+
+Also, ttycatnet.c wasn't used until later in the voyage, starting at 2023-05-09T04:23:13 UTC.
+Before that, the AIS logs do not have the received timestamp.
+
+So, we have packets like this:
+* Packets that include a complete UTC timestamp, sometimes including date too.
+* Packets that only include the UTC second.
+* Packets that have a received time recorded.
+
+From this, we need to disambiguate those packets that need it. This problem becomes much easier
+after the changeover to record reception times.
 """
 import bz2
 import re
@@ -283,6 +334,18 @@ def e(cls):
 
 
 def aismsg(msgcls):
+    """
+    Decoration for AIS message class. This translates a given dataclass from one that
+    describes a packet to one that actually can parse a packet.
+
+    :param msgcls: Packet class to decorate, usually a subclass of Packet. Must have
+                   a class-level member field for each packet field. Each such field
+                   must have a type annotation indcating the final decoded/parsed/scaled
+                   field and a value returned by field()
+    :return: A class that can actually parse packets. It has the appropriate methods
+             attached, has additional fields, and is a subclass of Dataclass. The class
+             will have
+    """
     def compile(pktcls: dataclass) -> None:
         """
         Compile a field_dict from the form that most closely matches the
@@ -531,6 +594,12 @@ register_msg(5,msg5)
 
 @aismsg
 class msg6(Packet):
+    """
+    Type 6 - Binary addressed message. This has a Designated Area Code (dac)
+    field and a functional ID (fid) field. The message has a binary payload
+    which may encode any data at the pleasure of the area authority. Some
+    DAC are international and standardized.
+    """
     msgtype: int  =field(metadata=md(0, 6, u,record=False))
     repeat:  int  =field(metadata=md(6, 2, u,record=False))
     mmsi:    int  =field(metadata=md(8, 30, u))
@@ -545,6 +614,11 @@ register_msg(6,msg6)
 
 @aismsg
 class msg6_1_0(Packet):
+    """
+    Type 6, DAC=1, FID=0. This is "Text using 6-bit ASCII". I am
+    decoding this to see if anyone ever actually sends anything
+    interesting.
+    """
     msgtype: int  =field(metadata=md(0, 6, u,record=False))
     repeat:  int  =field(metadata=md(6, 2, u,record=False))
     mmsi:    int  =field(metadata=md(8, 30, u))
@@ -561,6 +635,9 @@ register_msg((6,1,0),msg6_1_0)
 
 @aismsg
 class msg7(Packet):
+    """
+    Type 7 acknowledges the recipt of a previous type 6 message
+    """
     msgtype: int  =field(metadata=md( 0, 6, u))
     repeat:  int  =field(metadata=md( 6, 2, u,record=False))
     mmsi:    int  =field(metadata=md( 8,30, u))
@@ -578,6 +655,9 @@ register_msg( 7,msg7)
 
 @aismsg
 class msg8(Packet):
+    """
+    Binary broadcast message, with DAC and FID just like binary addressed messages (type 6).
+    """
     msgtype: int  =field(metadata=md(0, 6, u,record=False))
     repeat:  int  =field(metadata=md(6, 2, u,record=False))
     mmsi:    int  =field(metadata=md(8, 30, u))
@@ -588,6 +668,9 @@ register_msg(8,msg8)
 
 @aismsg
 class msg9(Packet):
+    """
+    Search-and-rescue (SAR) report. Decoding these to see if we actually heard any such messages.
+    """
     msgtype :int  =field(metadata=md(  0, 6, u,record=False))
     repeat  :int  =field(metadata=md(  6, 2, u,record=False))
     mmsi    :int  =field(metadata=md(  8,30, u))
@@ -608,6 +691,10 @@ register_msg(9,msg9)
 
 @aismsg
 class msg10(Packet):
+    """
+    UTC/Date inquiry. Request the destination MMSI to transimit the current UTC
+    date and time.
+    """
     msgtype  :int  =field(metadata=md(  0, 6, u,record=False))
     repeat   :int  =field(metadata=md(  6, 2, u,record=False))
     mmsi     :int  =field(metadata=md(  8,30, u,index=True))
@@ -615,8 +702,14 @@ class msg10(Packet):
 register_msg(10,msg10)
 
 
+# Type 11 is identical to type 4, and registered above.
+
+
 @aismsg
 class msg12(Packet):
+    """
+    Point-to-point text message. Decoded to see if we actually get anything.
+    """
     msgtype :int  =field(metadata=md(  0, 6, u,record=False))
     repeat  :int  =field(metadata=md(  6, 2, u,record=False))
     mmsi    :int  =field(metadata=md(  8,30, u,index=True))
@@ -629,6 +722,9 @@ register_msg(12,msg12)
 
 @aismsg
 class msg14(Packet):
+    """
+    Broadcast text message. Decoded to see if we actually get anything.
+    """
     msgtype :int  =field(metadata=md(  0, 6, u,record=False))
     repeat  :int  =field(metadata=md(  6, 2, u,record=False))
     mmsi    :int  =field(metadata=md(  8,30, u,index=True))
@@ -756,6 +852,12 @@ register_msg(21,msg21)
 
 @aismsg
 class msg24a(Packet):
+    """
+    Static data report. A transmitter is supposed to send a type A and a type B message,
+    in adjacent pairs. The real world means that it is up to the decoder to match up the pairs.
+    Part A includes the vessel name, while part B includes a lot of ship information
+    including the vessel dimensions.
+    """
     msgtype:      int  =field(metadata=md (0, 6, u,record=False))
     repeat:      int  =field(metadata=md (6, 2, u,record=False))
     mmsi:      int  =field(metadata=md (8, 30, u))
@@ -812,8 +914,10 @@ def fix_shipname(inname:str):
         outname+=char
     return outname
 
-
-dream=311042900
+# MMSIs for ships whose data we "trust". The intent is to use the timestamps
+# from the messages from the ships we "trust" to assist in disambiguating the
+# timestamps of other messages.
+dream=311042900 #MMSI for MV Disney Dream, the vessel used in Atlantic23.05
 trust_mmsi=(dream,)
 
 
@@ -836,6 +940,11 @@ def get_fn_dt(infn,file=None):
     else:
         raise ValueError(f"{binfn} Didn't match any known filename format")
     return dt
+
+
+"""
+
+
 
 
 def dt_sorted(infns):
