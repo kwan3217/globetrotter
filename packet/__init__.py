@@ -6,6 +6,8 @@ from enum import Enum
 from os.path import basename
 from typing import BinaryIO, Mapping
 
+from psycopg.errors import UniqueViolation
+
 from database import Database, Field
 
 
