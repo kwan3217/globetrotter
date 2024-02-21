@@ -247,7 +247,7 @@ class UBX_NAV_VELECEF(UBloxPacket):
 @ublox_packet(0x01,0x13,use_epoch=True,required_version=0x00)
 class UBX_NAV_HPPOSECEF(UBloxPacket):
     """This message combines position, velocity and time solution, including accuracy figures."""
-    version:int=field(metadata=bin_field("U1"))
+    version:int=field(metadata=bin_field("U1",record=False))
     reserved0a:int=field(metadata=bin_field("U1",record=False))
     reserved0b:int=field(metadata=bin_field("U2",record=False))
     iTOW         :Decimal  =field(metadata=bin_field("U4", unit="s", scale=Decimal('1e-3'), fmt="%10.3f",
@@ -270,7 +270,7 @@ class UBX_NAV_HPPOSECEF(UBloxPacket):
 @ublox_packet(0x01,0x14,use_epoch=True,required_version=0x00)
 class UBX_NAV_HPPOSLLH(UBloxPacket):
     """This message combines position, velocity and time solution, including accuracy figures."""
-    version:int=field(metadata=bin_field("U1"))
+    version:int=field(metadata=bin_field("U1",record=False))
     reserved0a:int=field(metadata=bin_field("U1",record=False))
     reserved0b:int=field(metadata=bin_field("U2",record=False))
     iTOW         :Decimal  =field(metadata=bin_field("U4", unit="s", scale=Decimal('1e-3'), fmt="%10.3f",
