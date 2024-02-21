@@ -3,7 +3,10 @@ Import gpsd pseudo-NMEA, which are created from the input binary datastream (in 
 """
 import bz2
 import gzip
+import multiprocessing
+import sys
 import warnings
+from functools import partial
 from glob import glob
 from os.path import basename
 
@@ -126,20 +129,24 @@ def plot_speed(db):
     plt.pause(1)
 
 
-def import_ubx(*,infns:list[str],dbname:str="globetrotter",schema:str,
+def import_ubx(infns:str|list[str],*,dbname:str="globetrotter",schema:str,
                host:str="192.168.217.102",port:int=5432,user:str="globetrotter",password:str="globetrotter",
-               import_files:bool=True,do_plot:bool=True,drop:bool=True,profile:bool=False):
+               import_files:bool=True,do_plot:bool=True,drop:bool=True,profile:bool=False,do_ensure:bool):
+    if type(infns)==str:
+        infns=[infns]
     n_pvt = 0
     with PostgresDatabase(host=host,port=port,user=user, password=password, database=dbname) as db:
         with db.transaction():
             if drop:
                 db.execute(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
-            db.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+            if do_ensure:
+                db.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
             db.execute(f"SET SEARCH_PATH={schema};")
         if import_files:
-            with db.transaction():
-                ensure_timeseries_tables(db,drop=drop)
-                ensure_tables(db,drop=drop)
+            if do_ensure:
+                with db.transaction():
+                    ensure_timeseries_tables(db,drop=drop)
+                    ensure_tables(db,drop=drop)
             seen_clsids={}
             for infn in infns:
                 with db.transaction():
@@ -206,13 +213,11 @@ def import_ubx(*,infns:list[str],dbname:str="globetrotter",schema:str,
                         plt.plot(xfloat)
                         plt.xlabel(f"Total time: {np.sum(xfloat)}")
                 plt.show()
-        if do_plot:
-            plot_height(db)
-            plt.show()
 
 
 def main():
-    case="Bahamas22_08"
+    case=sys.argv[1]
+    #case="Bahamas22_08"
     if case=="Colorado23_09":
         infns=sorted(
             #Colorado 23.09 debug case
@@ -222,12 +227,17 @@ def main():
             glob('/mnt/big/Colorado23.09/FluttershyBase/2023/09/2[789]/*.ubx', recursive=True)
         )
     elif case=="Atlantic23_05":
-        infns = sorted(glob('/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/2023/05/0[789]/*.ubx.bz2')+
-                       glob('/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/2023/05/20/*.ubx.bz2'))
+        infns = sorted(glob('/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/2023/05/**/*.ubx.bz2',recursive=True)+
+                       glob('/mnt/big/Atlantic23.05/Fluttershy/FluttershyBase/2023/05/**/*.ubx',recursive=True))
     elif case=="Bahamas22_08":
-        infns = sorted(glob('/mnt/big/Bahamas22.08/FluttershyBase/**/*.ubx.bz2',recursive=True)+
-                       glob('/mnt/big/Bahamas22.08/FluttershyBase/**/*.ubx',recursive=True))
-    import_ubx(infns=infns,schema=case)
+        infns = sorted(
+            glob('/mnt/big/Bahamas22.08/FluttershyBase/**/*.ubx.bz2',recursive=True)+
+            glob('/mnt/big/Bahamas22.08/FluttershyBase/**/*.ubx',recursive=True)
+        )
+    pool=multiprocessing.Pool()
+    import_ubx(infns=[infns[0]],schema=case,drop=True,do_plot=False,do_ensure=True)
+    pool.map(partial(import_ubx,schema=case,drop=False,do_plot=False,do_ensure=False),infns[1:])
+    #import_ubx(infns=infns,schema=case,drop=False)
 
 if __name__=="__main__":
     main()
