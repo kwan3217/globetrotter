@@ -173,11 +173,19 @@ def register_epoch(db:Database,*,utc:datetime,week:int,iTOW:Decimal)->int:
         register_epoch.first=register_epoch.now
     register_epoch.timehist.append(register_epoch.now)
     register_epoch.then=register_epoch.now
-    id=db.select_id('epoch',("week","iTOW"),(week,iTOW))
-    pre_exist=True
-    if id is None:
-        id=db.insert_get_id('epoch',("week","iTOW","utc"),(week,iTOW,utc))
-        pre_exist=False
+    # There is a race condition between here and the insert_get_id() below. If another
+    # process tries to insert the same epoch, then the insert_get_id() below will fail.
+    try:
+        with db.transaction():
+            id=db.select_id('epoch',("week","iTOW"),(week,iTOW))
+            pre_exist=True
+            if id is None:
+                id=db.insert_get_id('epoch',("week","iTOW","utc"),(week,iTOW,utc))
+                pre_exist=False
+    except UniqueViolation:
+        # We lost the race, so just get the id that the other process created
+        id=db.select_id('epoch',("week","iTOW"),(week,iTOW))
+        pre_exist=True
     return id,pre_exist
 
 
