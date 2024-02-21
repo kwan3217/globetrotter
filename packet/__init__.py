@@ -227,9 +227,6 @@ def ensure_table(db:Database,pktcls:dataclass,drop:bool,table_name:str=None)->No
                                                                        "same epoch id represent data describing the "
                                                                        "exact same instant in time."))
         indexes.append("epoch")
-    pktcls.has_cache=False
-    pktcls.cache_index=None
-    pktcls.cache_fields=[]
     for field in fields(pktcls):
         if not field.metadata.get("record",True):
             continue
@@ -242,11 +239,6 @@ def ensure_table(db:Database,pktcls:dataclass,drop:bool,table_name:str=None)->No
                 unique_tuples.append((field.name,))
             if field.metadata.get("index",False):
                 indexes.append(field.name)
-            if field.metadata.get("cache",False):
-                pktcls.has_cache=True
-                pktcls.cache_fields.append(field.name)
-            if field.metadata.get("cacheindex"):
-                pktcls.cache_index=field.name
             table_fields.append(Field(name=field.name,python_type=field.type).update_metadata(field.metadata))
     if pktcls.has_cache:
         table_fields.append(Field(name="changed",python_type=bool,
