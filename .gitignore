@@ -9,3 +9,4 @@
 *.gpx
 *.kml
 *.csv
+/dump.txt
