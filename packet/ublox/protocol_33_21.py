@@ -546,7 +546,7 @@ class UBX_NAV_SAT(UBloxPacket):
     clasCorrUsed  :list[bool]   =field(metadata=bin_field("X4", scale=bool,b0=23),default_factory=list)
 
 
-@ublox_packet(0x01,0x36,use_epoch=False, required_version=0x00)
+@ublox_packet(0x01,0x36,use_epoch=True, required_version=0x00)
 class UBX_NAV_COV(UBloxPacket):
     """This message contains information on the timing of the next pulse at the TIMEPULSE0 output."""
     iTOW        :Decimal  =field(metadata=bin_field("U4", scale=Decimal('1e-3'),unit="s"))
