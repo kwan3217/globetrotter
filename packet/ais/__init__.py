@@ -910,7 +910,6 @@ def ensure_tables(db:Database,drop:bool=False):
         ensure_table(db,msgdef,drop=drop,table_name=msgdef.table_name)
 
 
-"""
 def fix_shipname(inname:str):
     outname=""
     for char in inname:
@@ -924,7 +923,6 @@ def fix_shipname(inname:str):
 # timestamps of other messages.
 dream=311042900 #MMSI for MV Disney Dream, the vessel used in Atlantic23.05
 trust_mmsi=(dream,)
-
 
 ttycat_fn_timestamp=re.compile(r"daisy_(?P<year>[0-9][0-9])(?P<month>[0-9][0-9])(?P<day>[0-9][0-9])"
                                +"_(?P<hour>[0-9][0-9])(?P<minute>[0-9][0-9])(?P<second>[0-9][0-9]).nmea(.bz2)?")
