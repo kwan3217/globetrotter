@@ -74,7 +74,7 @@ import warnings
 from collections import namedtuple
 from dataclasses import dataclass, field, fields
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, Flag
 from glob import glob
 from math import sqrt
 from os.path import basename
@@ -360,6 +360,22 @@ class EPFD(Enum):
     INTERNAL_GNSS = 15
 
 
+class TxTimeSource(Flag):
+    UNKNOWN=0
+    MSG4=1
+    RADIO=2
+    TRUST=4
+    ROLLOVER=8
+    SECOND=16
+    RECV=32
+    TRUST_ROLLOVER=4+8
+    TRUST_SECOND=4+16
+    TRUST_ROLLOVER_SECOND=4+8+16
+    SECOND_RECV=16+32
+    ROLLOVER_SECOND_RECV=8+16+32
+
+
+
 def parse_aivdm(msg):
     if not hasattr(parse_aivdm,'frags'):
         # Dictionary of lists of fragments. Key is fragid, value is list of payloads. Once all payloads
@@ -553,10 +569,14 @@ def aismsg(msgcls):
             msgcls.fixup=new_fixup
         else:
             msgcls.fixup=fixup_radio
-    msgcls.utc_xmit = None
-    msgcls.__annotations__["utc_xmit"] = datetime
+    msgcls.utc_txmt = None
+    msgcls.__annotations__["utc_txmt"] = datetime
     msgcls.utc_recv = None
     msgcls.__annotations__["utc_recv"] = datetime
+    msgcls.utc_txtimesrc = None
+    msgcls.__annotations__["utc_txtimesrc"] = TxTimeSource
+    msgcls.utc_txtrust = None
+    msgcls.__annotations__["utc_txtrust"] = bool
     msgcls=dataclass(msgcls)
     compile(msgcls)
     msgcls.use_epoch=False
@@ -638,9 +658,7 @@ class posA(Packet):
     second  :int   =field(metadata=md(137, 6, utcsec))
     maneuver:Maneuver =field(metadata=md(143, 2, e(Maneuver)))
     raim    :bool  =field(metadata=md(148, 1, b))
-    radio   :int   =field(metadata=md(149,19, u,record=False))
-register_msg(1,posA)
-register_msg(2,posA)
+    radio   :int   =field(metadata=md(149,19, u))
 register_msg(3,posA)
 
 
@@ -660,7 +678,7 @@ class msg4(Packet):
     lat     :float=field(metadata=md(107, 27, lambda nbits, payload: signed(nbits, payload) / (60 * 10000),nan=91*60*10000))
     epfd    :EPFD =field(metadata=md(134, 4, e(EPFD)))
     raim    :bool =field(metadata=md(148, 1, b))
-    radio   :int  =field(metadata=md(149, 19, u,record=False))
+    radio   :int  =field(metadata=md(149, 19, u))
 register_msg(11,msg4)
 register_msg( 4,msg4)
 
