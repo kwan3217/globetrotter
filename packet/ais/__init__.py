@@ -112,6 +112,99 @@ def wraparound_delta(a:int,b:int,limit:int):
     return result
 
 
+class MMSItype(Enum):
+    Group=0
+    SARAircraft=1
+    SARAircraftFixed=101
+    SARAircraftHelo=105
+    Ship=2
+    Handheld=8
+    SARxpdr=970
+    MOB=972
+    EPIRB=974
+    HasParent=98
+    AtoN=99
+    AtoNPhysical=991
+    AtoNVirtual=996
+    Unknown=1000
+
+
+def decode_mmsi(mmsi:int)->tuple:
+    digits=f"{mmsi:09d}"
+    if digits[0]=="0":
+        mmsi_type=MMSItype.Group
+        mmsi_mid=int(digits[1:4])
+        mmsi_id=int(digits[5:])
+    elif digits[0]=="1":
+        if digits[0:3]!="111":
+            warnings.warn(f"SAR aircraft first digit seen, but not expected 111MIDaxx pattern in {mmid:%09d}")
+        if digits[6]=="1":
+            mmsi_type=MMSItype.SARAircraftFixed
+        elif digits[6]=="5":
+            mmsi_type=MMSItype.SARAircraftHelo
+        else:
+            mmsi_type=MMSItype.SARAircraft
+        mmsi_mid=int(digits[3:6])
+        mmsi_id=int(digits[7:])
+    elif digits[0]=="8":
+        # gpsd docs say that the form is 8MIDxxxx
+        # wikipedia doesn't have any structure
+        mmsi_type=MMSItype.Handheld
+        mmsi_mid=int(digits[1:4])
+        mmsi_id=int(digits[5:])
+    elif digits[0]=="9":
+        if digits[0:3]=="970":
+            mmsi_type = MMSItype.SARxpdr
+            mmsi_mid = int(digits[3:5]) #Note that this is a manufacturer ID, not a flag code
+            mmsi_id=int(digits[5:])
+        elif digits[0:3] == "972":
+            mmsi_type = MMSItype.MOB
+            mmsi_mid = int(digits[3:5])  # Note that this is a manufacturer ID, not a flag code
+            mmsi_id = int(digits[5:])
+        elif digits[0:3] == "974":
+            mmsi_type = MMSItype.EPIRB
+            mmsi_mid = int(digits[3:5])  # Note that this is a manufacturer ID, not a flag code
+            mmsi_id = int(digits[5:])
+        elif digits[0:3] == "98":
+            mmsi_type = MMSItype.HasParent
+            mmsi_mid = int(digits[2:5])
+            mmsi_id = int(digits[5:])
+        elif digits[0:3] == "99":
+            if digits[5]=="1":
+                mmsi_type = MMSItype.AtoNPhysical
+            elif digits[5]=="6":
+                mmsi_type = MMSItype.AtoNVirtual
+            else:
+                mmsi_type = MMSItype.AtoN
+            mmsi_id = int(digits[6:])
+            mmsi_mid = int(digits[2:5])
+        else:
+            warnings.warn(f"Freeform ID seen, but not with a recognized pattern {mmid:%09d}")
+            mmsi_type=MMSItype.unknown
+            mmsi_mid=None
+            mmsi_id=int(digits)
+    else:
+        # A normal ship
+        mmsi_type=MMSItype.Ship
+        mmsi_mid=int(digits[0:3])
+        mmsi_id=int(digits[3:])
+    return (mmsi_type, mmsi_mid, mmsi_id)
+
+
+def get_mid_country(mid:int)->tuple[str,str]:
+    """
+
+    :param mid: Maritime ID digits, basically a flag code. Maps unambiguously to country of registry.
+    :return: Three-letter code of country of registry, and common name of country of registry.
+    """
+    if mid<100:
+        # This is a two-digit mid, so not a country code
+        return None,None
+    else:
+        if not hasattr(get_mid_country,'table'):
+            get_mid_country.table=[]
+
+
 
 def dearmor_payload(payload,shift=0):
     """
