@@ -5,19 +5,23 @@ import bz2
 import gzip
 import re
 import warnings
+from copy import copy
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from glob import glob
 from math import floor
 from os.path import basename
-from traceback import print_exc
 from typing import Union, Match
 
 import pytz
 
 from database.postgres import PostgresDatabase
-from packet import ensure_timeseries_tables, register_file_start, register_file_finish
-from packet.ais import parse_payload, parse_aivdm, msg4, NotHandled, ensure_tables
+from packet import ensure_timeseries_tables, register_file_start, register_file_finish, Packet
+from packet.ais import parse_payload, parse_aivdm, msg4, NotHandled, ensure_tables, TxTimeSource, decode_mmsi
+
+
+dream = 311042900
+ouf_dream=open("log/dream_trust.csv","wt")
 
 
 def smart_open(fn, mode: str = None):
@@ -103,25 +107,13 @@ def get_fn_dt(infn,file=None):
     if match:=ttycat_fn_timestamp.match(binfn):
         #ttycat recording -- timestamp in UTC
         dt=make_utc(match=match)
-        print(f"ttycat date in filename {binfn=} dt={str(dt)}")
     elif match := putty_fn_timestamp.match(binfn):
         #putty log -- timestamp in local time (America/Denver, MDT=UTC-6 during Atlantic23.05)
         dt=make_utc(match=match,local=True)
-        print(f"putty  date in filename {binfn=} dt={str(dt)}")
     else:
         raise ValueError(f"{binfn} Didn't match any known filename format")
     return dt
 
-
-
-def line_iterator(inf):
-    line=inf.readline()
-    yield line.strip()
-    while line:
-        line=inf.readline()
-        if not line:
-            return
-        yield line.strip()
 
 
 puttylog = re.compile(
@@ -151,16 +143,29 @@ errorline = re.compile(r".*error:\s+(?P<error>.*)")
 
 
 def packet_iterator(infn):
-    marker=''
+    def line_iterator(inf)->str|None:
+        """
+        Emulate the action of iterating through the lines of a text input stream
+        :param inf: Text input stream
+        :return: None if the stream ends
+        :yield: The next line
+
+        We need this because if you *do* use the normal line iteration, somewhere
+        in the internals it calls next(), which interferes with tell().
+        """
+        line = inf.readline()
+        yield line.strip()
+        while line:
+            line = inf.readline()
+            if not line:
+                return
+            yield line.strip()
+
     in_debug = False
     this_ofs = 0
     next_ofs = this_ofs
     with smart_open(infn, "rt") as inf:
         for i_line,line in enumerate(line_iterator(inf)):
-            print(marker, end='')
-            if i_line % 200 == 0:
-                print(i_line)
-            marker = '.'
             this_ofs = next_ofs
             next_ofs = inf.tell()
             original_line = None
@@ -184,7 +189,6 @@ def packet_iterator(infn):
                 original_line = line
                 received_dt = make_utc(match=time_match)
                 line = time_match.group("line")
-                marker = '+'
             if len(line) < 2:
                 # Just skip over blank lines
                 continue
@@ -208,38 +212,80 @@ def packet_iterator(infn):
                     marker = '-'
                     continue
                 if error_match := errorline.match(line):
-                    marker = "V"
                     # warnings.warn(f"dAISy-detected error: {basename(infn)}, {i_line=} {line_dt=}\n{line}")
                     continue
                 if line[0] == "!" or line[0:5] == "AIVDM":
                     try:
                         payload, cksum = line.split("*")
                     except ValueError:
-                        marker = "W"
                         # warnings.warn(f"Unable to split checksum: {basename(infn)}, {i_line=}\n{line}")
                         continue
                     try:
                         msg = parse_aivdm(payload)
                         if msg is None:
-                            print(f"Couldn't parse message from payload {payload}")
+                            # It's not an error for msg to be None. It means that this line is the first
+                            # (or non-last) part of a multipart packet. Don't yield a packet until we
+                            # have seen the end of it.
+                            pass
                         else:
                             msg.utc_recv=received_dt
                             yield msg,this_ofs
                     except NotHandled:
-                        marker = "X"
                         warnings.warn(f"Unable to parse message: {basename(infn)}, {i_line=}\n{line}\ndue to")
                         import traceback
                         traceback.print_exc()
                         continue
                 else:
-                    marker = "Y"
                     warnings.warn(f"Unrecognized line in file: {basename(infn)}, {i_line=}\n{original_line=}\n{line=}")
                     continue
 
 
+def check_trust(msg:Packet, last_trusted_txmt_dt:datetime, mmsi_trust_strike:set)->datetime:
+    """
+    Check if the transmit time in the given packet is trusted
+    :param msg: packet with a utc_txmt
+    :param mmsi_trust_strike:
+    :return:  trusted transmit timestamp
+    Side effect: Update the untrusted_mmsi set as appropriate
+    """
+    # Strikes measure trust, or rather lack thereof. Three strikes and you're out, but
+    # we leave room for a time source to regain our trust.
+    max_strikes=5
+    trust_threshold=3
+    strike_delta=-1
+    trust=True
+    if (msg.utc_txmt-last_trusted_txmt_dt).total_seconds() <-60:
+        # If the new packet is *before* the last trusted time, the clock is
+        # going backwards. Give some leeway, but not much
+        strike_delta=1
+        trust=False
+    elif (msg.utc_txmt-last_trusted_txmt_dt).total_seconds() > 300:
+        # If the new packet is too far in the future, that's bad too. Give
+        # more leeway here
+        strike_delta=1
+        trust=False
+    if msg.mmsi not in mmsi_trust_strike:
+        mmsi_trust_strike[msg.mmsi]=max(0,strike_delta)
+    else:
+        mmsi_trust_strike[msg.mmsi]=max(0,min(max_strikes,mmsi_trust_strike[msg.mmsi]+strike_delta))
+    print(f"{msg.mmsi:09d},{mmsi_trust_strike[msg.mmsi]:2d},{str(last_trusted_txmt_dt)},{str(msg.utc_txmt)},{(msg.utc_txmt-last_trusted_txmt_dt).total_seconds():7.0f},{trust},{msg.msgtype:2d},{str(msg.utc_txtimesrc)}",file=ouf_dream)
+    if strike_delta>0:
+        # Don't trust this time, but leave ourselves open for trust in the future
+        pass
+    elif mmsi_trust_strike[msg.mmsi]<trust_threshold:
+        # We trust you enough, so set the time
+        last_trusted_txmt_dt=copy(msg.utc_txmt)
+        trust=True
+    else:
+        # Your time seems ok now, but we didn't trust you enough in the past to trust you now.
+        trust=False
+    #if msg.mmsi==dream:
+    return trust,last_trusted_txmt_dt
+
+
 def main():
-    dream = 311042900
-    untrusted_mmsi=set()
+    print(decode_mmsi(dream))
+    mmsi_trust_strikes={}
     import_files=True
     drop=True
     last_msg4_dt=None
@@ -256,8 +302,8 @@ def main():
             infns = sorted(glob("/mnt/big/kwanometry/Atlantic23.05/daisy/2023/05/*/*",recursive=True))
             for i_infn,infn in enumerate(infns):
                 file_dt = get_fn_dt(infn)
-                last_believed_xmit_dt=file_dt
-                print(f"{i_infn}/{len(infns)} {basename(infn)}")
+                last_trusted_txmt_dt=file_dt
+#                print(f"{i_infn}/{len(infns)} {basename(infn)}")
                 with db.transaction():
                     fileid = register_file_start(db, basename(infn))
                 with db.transaction():
@@ -283,96 +329,63 @@ def main():
                         #
                         # If we "trust" the timestamp:
                         #   Keep note of it as our last trusted timestamp
+                        if msg.utc_recv is None:
+                            msg.utc_txtimesrc = TxTimeSource.TRUST
+                        else:
+                            last_trusted_txmt_dt=copy(msg.utc_recv)
+                            msg.utc_txtimesrc=TxTimeSource.RECV
                         if hasattr(msg,'utch') and msg.utch is not None and hasattr(msg,'utcm') and msg.utcm is not None:
-                            if hasattr(msg,'second'):
-                                print("Complete time of day")
+                            if hasattr(msg,'second') and msg.second is None:
+                                # This happens, when the utc hour and minute are reported in the radio field,
+                                # but not in a packet that has a second field (IE not a posA).
+                                pass
                             else:
-                                print("Not complete time of day, no seconds")
-                        if msg.mmsi in transmitted_tl:
-                            this_transmitted_tl=transmitted_tl[msg.mmsi]
-                        else:
-                            this_transmitted_tl=[last_believed_xmit_dt.year,
-                                                 last_believed_xmit_dt.month,
-                                                 last_believed_xmit_dt.day,
-                                                 last_believed_xmit_dt.hour,
-                                                 last_believed_xmit_dt.minute,
-                                                 last_believed_xmit_dt.second]
-                        if type(msg)==msg4:
-                            # Only message type we have seen that has a complete datetime. Unfortunately
-                            # only for fixed markers, but Dream did transmit this a couple of times.
-                            if msg.mmsi not in untrusted_mmsi:
-                                this_transmitted_tl=[msg.year,msg.month,msg.day,msg.hour,msg.minute,msg.second]
-                                this_transmitted_dt=make_utc(*this_transmitted_tl)
-                                time_delta=(this_transmitted_dt-last_believed_xmit_dt).total_seconds()
-                                if abs(time_delta)<60:
-                                    last_believed_xmit_dt=this_transmitted_dt
-                                    if last_msg4_dt is not None:
-                                        if msg.mmsi not in seen_msg4_mmsi:
-                                            print(f"Saw full timestamp from NEW mmsi {msg.mmsi:09d}, dt={str(this_transmitted_dt)}, delta={(this_transmitted_dt - last_msg4_dt).total_seconds()} s")
-                                    last_msg4_dt=this_transmitted_dt
-                                    seen_msg4_mmsi.add(msg.mmsi)
-                                    last_msg4_mmsi=msg.mmsi
-                                else:
-                                    untrusted_mmsi.add(msg.mmsi)
-                                    print(f"Saw full timestamp too far from last trusted timestamp from mmsi {msg.mmsi:09d}, dt={str(this_transmitted_dt)}, delta={time_delta} s")
-                        else:
-                            if hasattr(msg,'second'):
+                                msg.utc_txmt=make_utc(last_trusted_txmt_dt.year,last_trusted_txmt_dt.month,last_trusted_txmt_dt.day,
+                                                      msg.utch,msg.utcm,msg.second)
+                                msg.utc_txtrust,last_trusted_txmt_dt=check_trust(msg,last_trusted_txmt_dt,mmsi_trust_strikes)
+                                msg.utc_txtimesrc=TxTimeSource.RADIO
+                        elif type(msg)==msg4:
+                            if (msg.year is None or msg.month is None or msg.day is None or
+                                msg.hour is None or msg.minute is None or msg.second is not None):
+                                # If any of the time fields are invalid, ignore the packet
+                                pass
+                            else:
+                                msg.utc_txmt=make_utc(msg.year,msg.month,msg.day,msg.hour,msg.minute,msg.second)
+                                msg.utc_txtrust,last_trusted_txmt_dt = check_trust(msg, last_trusted_txmt_dt, mmsi_trust_strikes)
+                                msg.utc_txtimesrc=TxTimeSource.MSG4
+                        if msg.utc_txtimesrc not in (TxTimeSource.RADIO,TxTimeSource.MSG4):
+                            if hasattr(msg,'second') and msg.second is not None:
                                 new_second=msg.second
+                                msg.utc_txtimesrc|=TxTimeSource.SECOND
                             else:
-                                new_second=this_transmitted_tl[5]
-                            sec_rollover=(new_second is not None and
-                                          this_transmitted_tl[5] is not None and
-                                          new_second<15 and
-                                          this_transmitted_tl[5]>45)
+                                new_second=last_trusted_txmt_dt.second
+                            if new_second<15 and last_trusted_txmt_dt.second>45:
+                                sec_rollover = timedelta(seconds=60)
+                                msg.utc_txtimesrc|=TxTimeSource.ROLLOVER
+                            else:
+                                sec_rollover = timedelta(seconds=0)
                             if hasattr(msg, 'utcm') and msg.utcm is not None:
                                 new_minute = msg.utcm
                             else:
-                                new_minute = this_transmitted_tl[4]
-                                min_rollover=False
-                                if sec_rollover and new_minute is not None:
-                                    new_minute+=1
-                                    if new_minute>=60:
-                                        new_minute-=60
-                                        min_rollover=True
+                                new_minute = last_trusted_txmt_dt.minute
                             if hasattr(msg,'utch') and msg.utch is not None:
                                 new_hour=msg.utch
                             else:
-                                new_hour=this_transmitted_tl[3]
-                                if min_rollover:
-                                    new_hour+=1
-                                    if new_hour>=24:
-                                        new_hour-=24
-                            if new_hour==0 and this_transmitted_tl[3]==23:
-                                # Since Atlantic23.05 was all in 1 month,
-                                # we don't have to worry about month rollover
-                                this_transmitted_tl[2]+=1
-                            this_transmitted_tl[3]=new_hour
-                            this_transmitted_tl[4]=new_minute
-                            this_transmitted_tl[5]=new_second
-                        has_time=True
-                        for x in this_transmitted_tl:
-                            if x is None:
-                                has_time=False
-                        if has_time:
-                            if msg.mmsi in transmitted_tl:
-                                old_transmitted_dt = make_utc(*transmitted_tl[msg.mmsi])
-                                new_transmitted_dt = make_utc(*this_transmitted_tl)
-                                if new_transmitted_dt < old_transmitted_dt:
-                                    print(f"Timestamps on mmsi {msg.mmsi:09d} went backwards. "
-                                          f"Old={str(old_transmitted_dt)}, "
-                                          f"new={str(new_transmitted_dt)}")
-                            try:
-                                msg.utc_xmit=datetime(*this_transmitted_tl)
-                            except ValueError:
-                                print_exc()
-                                continue
-                        else:
-                            msg.utc_xmit=None
-                        transmitted_tl[msg.mmsi]=this_transmitted_tl
+                                new_hour=last_trusted_txmt_dt.hour
+                            new_day=last_trusted_txmt_dt.day
+                            msg.utc_txmt=make_utc(last_trusted_txmt_dt.year,
+                                                  last_trusted_txmt_dt.month,
+                                                  new_day,
+                                                  new_hour,
+                                                  new_minute,
+                                                  new_second)+sec_rollover
+                            msg.utc_txtrust,last_trusted_txmt_dt = check_trust(msg, last_trusted_txmt_dt, mmsi_trust_strikes)
                         msg.write(db, fileid=fileid, ofs=ofs)
                 with db.transaction():
                     register_file_finish(db, fileid)
-                print(f"\nDone with {basename(infn)} {i_infn}/{len(infns)}")
+    for mmsi in sorted(mmsi_trust_strikes.keys()):
+        print(f"{mmsi:09d} - {mmsi_trust_strikes[mmsi]:3d}")
+#                print(f"\nDone with {basename(infn)} {i_infn}/{len(infns)}")
 
 
 if __name__=="__main__":
