@@ -750,6 +750,57 @@ register_msg((6,1,0),msg6_1_0)
 
 
 @aismsg
+class msg6_235_10(Packet):
+    """
+    Type 6, DAC=235 or 250, FID=10.
+
+    This message provides AtoN (Aid to navigation) monitoring data for the
+    General Lighthouse Authorities (GLA), which consists of Trinity House
+    (England & Wales), Northern Lighthouse Board (Scotland) and the
+    Commissioners of Irish Lights (Ireland). It is described in
+    [IALA-A126].
+
+    The interval between the transmissions of these messages will be
+    synchronized with message 21, although not necessarily at the same
+    reporting rate. If Message 21 is not used at a particular site, then
+    the reporting interval should be selected to minimize the power
+    requirement of the transponder, whilst still providing enough data
+    to enable meaningful diagnostic analysis.
+    """
+    msgtype: int  =field(metadata=md(0, 6, u,record=False))
+    repeat:  int  =field(metadata=md(6, 2, u,record=False))
+    mmsi:    int  =field(metadata=md(8, 30, u))
+    seqno:   int  =field(metadata=md(38, 2, u))
+    dest_mmsi:int =field(metadata=md(40, 30, u))
+    retransmit:bool=field(metadata=md(70, 1, b))
+    dac:     int  =field(metadata=md(72,10, u))
+    fid:     int  =field(metadata=md(82, 6, u))
+    ana_int: float=field(metadata=md(88,10,lambda nbits,payload:payload*0.05,nan=0))
+    ana_ext1: float = field(metadata=md(98, 10, lambda nbits, payload: payload * 0.05, nan=0))
+    ana_ext2: float = field(metadata=md(108, 10, lambda nbits, payload: payload * 0.05, nan=0))
+    class RACONStatus(Enum):
+        NoRACON = 0
+        NotMonitored=1
+        Operational=2
+        Error=3
+    racon: RACONStatus = field(metadata=md(118, 2, lambda nbits,payload:msg6_235_10.RACONStatus(payload)))
+    class LightStatus(Enum):
+        NoLight = 0
+        LightOn=1
+        LightOff=2
+        Error=3
+    light: LightStatus = field(metadata=md(120, 2, lambda nbits,payload:msg6_235_10.LightStatus(payload)))
+    class Health(Enum):
+        OK = 0
+        Alarm=1
+    health: Health = field(metadata=md(122, 1, lambda nbits,payload:msg6_235_10.Health(payload)))
+    stat_ext:int = field(metadata=md(123, 8,u))
+    off_pos:bool = field(metadata=md(131, 1,b))
+register_msg((6,250,10),msg6_235_10)
+register_msg((6,235,10),msg6_235_10)
+
+
+@aismsg
 class msg7(Packet):
     """
     Type 7 acknowledges the recipt of a previous type 6 message
