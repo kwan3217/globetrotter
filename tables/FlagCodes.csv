@@ -1,295 +1,295 @@
-"Digit",,"Allocated to"
-"201","ALB","Albania (Republic of)"
-"202","AND","Andorra (Principality of)"
-"203","AUT","Austria"
-"204","PRT-AZO","Portugal - Azores"
-"205","BEL","Belgium"
-"206","BLR","Belarus (Republic of)"
-"207","BGR","Bulgaria (Republic of)"
-"208","VAT","Vatican City State"
-"209","CYP","Cyprus (Republic of)"
-"210","CYP","Cyprus (Republic of)"
-"211","GER","Germany (Federal Republic of)"
-"212","CYP","Cyprus (Republic of)"
-"213","GEO","Georgia"
-"214","MDA","Moldova (Republic of)"
-"215","MLT","Malta"
-"216","ARM","Armenia (Republic of)"
-"218","GER","Germany (Federal Republic of)"
-"219","DNK","Denmark"
-"220","DNK","Denmark"
-"224","ESP","Spain"
-"225","ESP","Spain"
-"226","FRA","France"
-"227","FRA","France"
-"228","FRA","France"
-"229","MLT","Malta"
-"230","FIN","Finland"
-"231","DNK-FAE","Denmark - Faroe Islands"
-"232","GBR","United Kingdom of Great Britain and Northern Ireland"
-"233","GBR","United Kingdom of Great Britain and Northern Ireland"
-"234","GBR","United Kingdom of Great Britain and Northern Ireland"
-"235","GBR","United Kingdom of Great Britain and Northern Ireland"
-"236","GBR-GIB","United Kingdom of Great Britain and Northern Ireland - Gibraltar"
-"237","GRC","Greece"
-"238","HRV","Croatia (Republic of)"
-"239","GRC","Greece"
-"240","GRC","Greece"
-"241","GRC","Greece"
-"242","MAR","Morocco (Kingdom of)"
-"243","HUN","Hungary"
-"244","NLD","Netherlands (Kingdom of the)"
-"245","NLD","Netherlands (Kingdom of the)"
-"246","NLD","Netherlands (Kingdom of the)"
-"247","ITA","Italy"
-"248","MLT","Malta"
-"249","MLT","Malta"
-"250","IRL","Ireland"
-"251","ISL","Iceland"
-"252","LIE","Liechtenstein (Principality of)"
-"253","LUX","Luxembourg"
-"254","MCO","Monaco (Principality of)"
-"255","PRT-MAD","Portugal - Madeira"
-"256","MLT","Malta"
-"257","NOR","Norway"
-"258","NOR","Norway"
-"259","NOR","Norway"
-"261","POL","Poland (Republic of)"
-"262","MNE","Montenegro"
-"263","PRT","Portugal"
-"264","ROU","Romania"
-"265","SWE","Sweden"
-"266","SWE","Sweden"
-"267","SVK","Slovak Republic"
-"268","SMR","San Marino (Republic of)"
-"269","CHE","Switzerland (Confederation of)"
-"270","CZE","Czech Republic"
-"271","TUR","Republic of Türkiye"
-"272","UKR","Ukraine"
-"273","RUS","Russian Federation"
-"274","MKD","North Macedonia (Republic of)"
-"275","LVA","Latvia (Republic of)"
-"276","EST","Estonia (Republic of)"
-"277","LTU","Lithuania (Republic of)"
-"278","SVN","Slovenia (Republic of)"
-"279","SVK","Serbia (Republic of)"
-"301","GBR-ANG","United Kingdom of Great Britain and Northern Ireland - Anguilla"
-"303","USA-AK","United States of America - Alaska (State of)"
-"304","ATG","Antigua and Barbuda"
-"305","ATG","Antigua and Barbuda"
-"306","NLD-STE","Netherlands (Kingdom of the) - Bonaire, Sint Eustatius and Saba"
-"306","NLD-CCO","Netherlands (Kingdom of the) - Curaçao"
-"306","NLD-SMA","Netherlands (Kingdom of the) - Sint Maarten (Dutch part)"
-"307","NLD-ARB","Netherlands (Kingdom of the) - Aruba"
-"308","BHS","Bahamas (Commonwealth of the)"
-"309","BHS","Bahamas (Commonwealth of the)"
-"310","GBR-BER","United Kingdom of Great Britain and Northern Ireland - Bermuda"
-"311","BHS","Bahamas (Commonwealth of the)"
-"312","BLZ","Belize"
-"314","BRB","Barbados"
-"316","CAN","Canada"
-"319","GBR-CAY","United Kingdom of Great Britain and Northern Ireland - Cayman Islands"
-"321","CRI","Costa Rica"
-"323","CUB","Cuba"
-"325","DMA","Dominica (Commonwealth of)"
-"327","DOM","Dominican Republic"
-"329","FRA-GUA","France - Guadeloupe (French Department of)"
-"330","GRD","Grenada"
-"331","DNK-GRL","Denmark - Greenland"
-"332","GTM","Guatemala (Republic of)"
-"334","HND","Honduras (Republic of)"
-"336","HTI","Haiti (Republic of)"
-"338","USA","United States of America"
-"339","JAM","Jamaica"
-"341","KNA","Saint Kitts and Nevis (Federation of)"
-"343","LCA","Saint Lucia"
-"345","MEX","Mexico"
-"347","FRA-MAR","France - Martinique (French Department of)"
-"348","GBR-MTS","United Kingdom of Great Britain and Northern Ireland - Montserrat"
-"350","NIC","Nicaragua"
-"351","PAN","Panama (Republic of)"
-"352","PAN","Panama (Republic of)"
-"353","PAN","Panama (Republic of)"
-"354","PAN","Panama (Republic of)"
-"355","PAN","Panama (Republic of)"
-"356","PAN","Panama (Republic of)"
-"357","PAN","Panama (Republic of)"
-"358","USA-PR","United States of America - Puerto Rico"
-"359","SLV","El Salvador (Republic of)"
-"361","FRA-SPM","France - Saint Pierre and Miquelon (Territorial Collectivity of)"
-"362","TTO","Trinidad and Tobago"
-"364","GBR-TCI","United Kingdom of Great Britain and Northern Ireland - Turks and Caicos Islands"
-"366","USA","United States of America"
-"367","USA","United States of America"
-"368","USA","United States of America"
-"369","USA","United States of America"
-"370","PAN","Panama (Republic of)"
-"371","PAN","Panama (Republic of)"
-"372","PAN","Panama (Republic of)"
-"373","PAN","Panama (Republic of)"
-"374","PAN","Panama (Republic of)"
-"375","VCT","Saint Vincent and the Grenadines"
-"376","VCT","Saint Vincent and the Grenadines"
-"377","VCT","Saint Vincent and the Grenadines"
-"378","GBR-BVI","United Kingdom of Great Britain and Northern Ireland - British Virgin Islands"
-"379","USA-VI","United States of America - United States Virgin Islands"
-"401","AFG","Afghanistan"
-"403","SAU","Saudi Arabia (Kingdom of)"
-"405","BGD","Bangladesh (People's Republic of)"
-"408","BHR","Bahrain (Kingdom of)"
-"410","BTN","Bhutan (Kingdom of)"
-"412","CHN","China (People's Republic of)"
-"413","CHN","China (People's Republic of)"
-"414","CHN","China (People's Republic of)"
-"416","TWN","China (People's Republic of) - Taiwan (Province of China)"
-"417","LKA","Sri Lanka (Democratic Socialist Republic of)"
-"419","IND","India (Republic of)"
-"422","IRN","Iran (Islamic Republic of)"
-"423","AZE","Azerbaijan (Republic of)"
-"425","IRQ","Iraq (Republic of)"
-"428","ISR","Israel (State of)"
-"431","JPN","Japan"
-"432","JPN","Japan"
-"434","#N/A","Turkmenistan"
-"436","#N/A","Kazakhstan (Republic of)"
-"437","#N/A","Uzbekistan (Republic of)"
-"438","#N/A","Jordan (Hashemite Kingdom of)"
-"440","KOR","Korea (Republic of)"
-"441","KOR","Korea (Republic of)"
-"443","#N/A","State of Palestine (In accordance with Resolution 99 Rev. Dubai, 2018)"
-"445","PRK","Democratic People's Republic of Korea"
-"447","#N/A","Kuwait (State of)"
-"450","#N/A","Lebanon"
-"451","#N/A","Kyrgyz Republic"
-"453","#N/A","China (People's Republic of) - Macao (Special Administrative Region of China)"
-"455","#N/A","Maldives (Republic of)"
-"457","#N/A","Mongolia"
-"459","#N/A","Nepal (Federal Democratic Republic of)"
-"461","#N/A","Oman (Sultanate of)"
-"463","#N/A","Pakistan (Islamic Republic of)"
-"466","#N/A","Qatar (State of)"
-"468","#N/A","Syrian Arab Republic"
-"470","ARE","United Arab Emirates"
-"471","ARE","United Arab Emirates"
-"472","#N/A","Tajikistan (Republic of)"
-"473","#N/A","Yemen (Republic of)"
-"475","#N/A","Yemen (Republic of)"
-"477","#N/A","China (People's Republic of) - Hong Kong (Special Administrative Region of China)"
-"478","#N/A","Bosnia and Herzegovina"
-"501","#N/A","France - Adelie Land"
-"503","#N/A","Australia"
-"506","#N/A","Myanmar (Union of)"
-"508","#N/A","Brunei Darussalam"
-"510","#N/A","Micronesia (Federated States of)"
-"511","#N/A","Palau (Republic of)"
-"512","#N/A","New Zealand"
-"514","#N/A","Cambodia (Kingdom of)"
-"515","#N/A","Cambodia (Kingdom of)"
-"516","#N/A","Australia - Christmas Island (Indian Ocean)"
-"518","#N/A","New Zealand - Cook Islands"
-"520","#N/A","Fiji (Republic of)"
-"523","#N/A","Australia - Cocos (Keeling) Islands"
-"525","#N/A","Indonesia (Republic of)"
-"529","#N/A","Kiribati (Republic of)"
-"531","#N/A","Lao People's Democratic Republic"
-"533","#N/A","Malaysia"
-"536","USA-MP","United States of America - Northern Mariana Islands (Commonwealth of the)"
-"538","#N/A","Marshall Islands (Republic of the)"
-"540","#N/A","France - New Caledonia"
-"542","#N/A","New Zealand - Niue"
-"544","#N/A","Nauru (Republic of)"
-"546","FRA-POL","France - French Polynesia"
-"548","PHL","Philippines (Republic of the)"
-"550","#N/A","Timor-Leste (Democratic Republic of)"
-"553","#N/A","Papua New Guinea"
-"555","GBR-PIT","United Kingdom of Great Britain and Northern Ireland - Pitcairn Island"
-"557","SLB","Solomon Islands"
-"559","USA-AS","United States of America - American Samoa"
-"561","WSM","Samoa (Independent State of)"
-"563","SGP","Singapore (Republic of)"
-"564","SGP","Singapore (Republic of)"
-"565","SGP","Singapore (Republic of)"
-"566","SGP","Singapore (Republic of)"
-"567","#N/A","Thailand"
-"570","#N/A","Tonga (Kingdom of)"
-"572","#N/A","Tuvalu"
-"574","#N/A","Viet Nam (Socialist Republic of)"
-"576","#N/A","Vanuatu (Republic of)"
-"577","#N/A","Vanuatu (Republic of)"
-"578","#N/A","France - Wallis and Futuna Islands"
-"601","#N/A","South Africa (Republic of)"
-"603","#N/A","Angola (Republic of)"
-"605","#N/A","Algeria (People's Democratic Republic of)"
-"607","#N/A","France - Saint Paul and Amsterdam Islands"
-"608","#N/A","United Kingdom of Great Britain and Northern Ireland - Ascension Island"
-"609","#N/A","Burundi (Republic of)"
-"610","#N/A","Benin (Republic of)"
-"611","#N/A","Botswana (Republic of)"
-"612","#N/A","Central African Republic"
-"613","#N/A","Cameroon (Republic of)"
-"615","#N/A","Congo (Republic of the)"
-"616","#N/A","Comoros (Union of the)"
-"617","#N/A","Cabo Verde (Republic of)"
-"618","#N/A","France - Crozet Archipelago"
-"619","#N/A","Côte d'Ivoire (Republic of)"
-"620","#N/A","Comoros (Union of the)"
-"621","#N/A","Djibouti (Republic of)"
-"622","#N/A","Egypt (Arab Republic of)"
-"624","#N/A","Ethiopia (Federal Democratic Republic of)"
-"625","#N/A","Eritrea"
-"626","#N/A","Gabonese Republic"
-"627","#N/A","Ghana"
-"629","#N/A","Gambia (Republic of the)"
-"630","#N/A","Guinea-Bissau (Republic of)"
-"631","#N/A","Equatorial Guinea (Republic of)"
-"632","#N/A","Guinea (Republic of)"
-"633","#N/A","Burkina Faso"
-"634","#N/A","Kenya (Republic of)"
-"635","#N/A","France - Kerguelen Islands"
-"636","#N/A","Liberia (Republic of)"
-"637","#N/A","Liberia (Republic of)"
-"638","#N/A","South Sudan (Republic of)"
-"642","#N/A","Libya (State of)"
-"644","#N/A","Lesotho (Kingdom of)"
-"645","#N/A","Mauritius (Republic of)"
-"647","#N/A","Madagascar (Republic of)"
-"649","#N/A","Mali (Republic of)"
-"650","#N/A","Mozambique (Republic of)"
-"654","#N/A","Mauritania (Islamic Republic of)"
-"655","#N/A","Malawi"
-"656","#N/A","Niger (Republic of the)"
-"657","#N/A","Nigeria (Federal Republic of)"
-"659","#N/A","Namibia (Republic of)"
-"660","#N/A","France - Reunion (French Department of)"
-"661","#N/A","Rwanda (Republic of)"
-"662","#N/A","Sudan (Republic of the)"
-"663","#N/A","Senegal (Republic of)"
-"664","#N/A","Seychelles (Republic of)"
-"665","GBR-STH","United Kingdom of Great Britain and Northern Ireland - Saint Helena"
-"666","#N/A","Somalia (Federal Republic of)"
-"667","#N/A","Sierra Leone"
-"668","#N/A","Sao Tome and Principe (Democratic Republic of)"
-"669","#N/A","Eswatini (Kingdom of)"
-"670","#N/A","Chad (Republic of)"
-"671","#N/A","Togolese Republic"
-"672","#N/A","Tunisia"
-"674","#N/A","Tanzania (United Republic of)"
-"675","#N/A","Uganda (Republic of)"
-"676","#N/A","Democratic Republic of the Congo"
-"677","#N/A","Tanzania (United Republic of)"
-"678","#N/A","Zambia (Republic of)"
-"679","#N/A","Zimbabwe (Republic of)"
-"701","#N/A","Argentine Republic"
-"710","#N/A","Brazil (Federative Republic of)"
-"720","#N/A","Bolivia (Plurinational State of)"
-"725","#N/A","Chile"
-"730","#N/A","Colombia (Republic of)"
-"735","#N/A","Ecuador"
-"740","GBR-FKL","United Kingdom of Great Britain and Northern Ireland - Falkland Islands (Malvinas)"
-"745","#N/A","France - Guiana (French Department of)"
-"750","#N/A","Guyana"
-"755","#N/A","Paraguay (Republic of)"
-"760","#N/A","Peru"
-"765","#N/A","Suriname (Republic of)"
-"770","#N/A","Uruguay (Eastern Republic of)"
-"775","#N/A","Venezuela (Bolivarian Republic of)"
+Digits,Three-letter code,Country name
+201,ALB,Albania
+202,AND,Andorra
+203,AUT,Austria
+204,PRT-AZO,Portugal - Azores
+205,BEL,Belgium
+206,BLR,Belarus
+207,BGR,Bulgaria
+208,VAT,Vatican City State
+209,CYP,Cyprus
+210,CYP,Cyprus
+211,GER,Germany
+212,CYP,Cyprus
+213,GEO,Georgia
+214,MDA,Moldova
+215,MLT,Malta
+216,ARM,Armenia
+218,GER,Germany
+219,DNK,Denmark
+220,DNK,Denmark
+224,ESP,Spain
+225,ESP,Spain
+226,FRA,France
+227,FRA,France
+228,FRA,France
+229,MLT,Malta
+230,FIN,Finland
+231,DNK-FAE,Denmark - Faroe Islands
+232,GBR,United Kingdom
+233,GBR,United Kingdom
+234,GBR,United Kingdom
+235,GBR,United Kingdom
+236,GBR-GIB,United Kingdom - Gibraltar
+237,GRC,Greece
+238,HRV,Croatia
+239,GRC,Greece
+240,GRC,Greece
+241,GRC,Greece
+242,MAR,Morocco
+243,HUN,Hungary
+244,NLD,Netherlands
+245,NLD,Netherlands
+246,NLD,Netherlands
+247,ITA,Italy
+248,MLT,Malta
+249,MLT,Malta
+250,IRL,Ireland
+251,ISL,Iceland
+252,LIE,Liechtenstein
+253,LUX,Luxembourg
+254,MCO,Monaco
+255,PRT-MAD,Portugal - Madeira
+256,MLT,Malta
+257,NOR,Norway
+258,NOR,Norway
+259,NOR,Norway
+261,POL,Poland
+262,MNE,Montenegro
+263,PRT,Portugal
+264,ROU,Romania
+265,SWE,Sweden
+266,SWE,Sweden
+267,SVK,Slovak Republic
+268,SMR,San Marino
+269,CHE,Switzerland
+270,CZE,Czech Republic
+271,TUR,Republic of Türkiye
+272,UKR,Ukraine
+273,RUS,Russian Federation
+274,MKD,North Macedonia
+275,LVA,Latvia
+276,EST,Estonia
+277,LTU,Lithuania
+278,SVN,Slovenia
+279,SVK,Serbia
+301,GBR-ANG,United Kingdom - Anguilla
+303,USA-AK,United States of America - Alaska
+304,ATG,Antigua and Barbuda
+305,ATG,Antigua and Barbuda
+306,NLD-STE,Netherlands - Bonaire, Sint Eustatius and Saba
+306,NLD-CW,Netherlands - Curaçao
+306,NLD-SX,Netherlands - Sint Maarten (Dutch part)
+307,NLD-ARB,Netherlands - Aruba
+308,BHS,Bahamas
+309,BHS,Bahamas
+310,GBR-BER,United Kingdom - Bermuda
+311,BHS,Bahamas
+312,BLZ,Belize
+314,BRB,Barbados
+316,CAN,Canada
+319,GBR-CAY,United Kingdom - Cayman Islands
+321,CRI,Costa Rica
+323,CUB,Cuba
+325,DMA,Dominica
+327,DOM,Dominican Republic
+329,FRA-GUA,France - Guadeloupe
+330,GRD,Grenada
+331,DNK-GRL,Denmark - Greenland
+332,GTM,Guatemala
+334,HND,Honduras
+336,HTI,Haiti
+338,USA,United States of America
+339,JAM,Jamaica
+341,KNA,Saint Kitts and Nevis
+343,LCA,Saint Lucia
+345,MEX,Mexico
+347,FRA-MAR,France - Martinique
+348,GBR-MTS,United Kingdom - Montserrat
+350,NIC,Nicaragua
+351,PAN,Panama
+352,PAN,Panama
+353,PAN,Panama
+354,PAN,Panama
+355,PAN,Panama
+356,PAN,Panama
+357,PAN,Panama
+358,USA-PR,United States of America - Puerto Rico
+359,SLV,El Salvador
+361,FRA-SPM,France - Saint Pierre and Miquelon
+362,TTO,Trinidad and Tobago
+364,GBR-TCI,United Kingdom - Turks and Caicos Islands
+366,USA,United States of America
+367,USA,United States of America
+368,USA,United States of America
+369,USA,United States of America
+370,PAN,Panama
+371,PAN,Panama
+372,PAN,Panama
+373,PAN,Panama
+374,PAN,Panama
+375,VCT,Saint Vincent and the Grenadines
+376,VCT,Saint Vincent and the Grenadines
+377,VCT,Saint Vincent and the Grenadines
+378,GBR-BVI,United Kingdom of Great Britain and Northern Ireland - British Virgin Islands
+379,USA-VI,United States of America - United States Virgin Islands
+401,AFG,Afghanistan
+403,SAU,Saudi Arabia
+405,BGD,Bangladesh
+408,BHR,Bahrain
+410,BTN,Bhutan
+412,CHN,People's Republic of China
+413,CHN,People's Republic of China
+414,CHN,People's Republic of China
+416,TWN,Taiwan
+417,LKA,Sri Lanka
+419,IND,India
+422,IRN,Iran
+423,AZE,Azerbaijan
+425,IRQ,Iraq
+428,ISR,Israel
+431,JPN,Japan
+432,JPN,Japan
+434,TKM,Turkmenistan
+436,KAZ,Kazakhstan
+437,UZB,Uzbekistan
+438,JOR,Jordan
+440,KOR,South Korea
+441,KOR,South Korea
+443,PSE,Palestine
+445,PRK,North Korea
+447,KWT,Kuwait
+450,LBN,Lebanon
+451,KGZ,Kyrgyzstan
+453,CHN-MCO,People's Republic of China - Macao
+455,MDV,Maldives
+457,MNG,Mongolia
+459,NPL,Nepal
+461,OMN,Oman
+463,PAK,Pakistan
+466,QAT,Qatar
+468,SYR,Syria
+470,ARE,United Arab Emirates
+471,ARE,United Arab Emirates
+472,TJK,Tajikistan
+473,YEM,Yemen
+475,YEM,Yemen
+477,CHN-HKG,People's Republic of China - Hong Kong
+478,BIH,Bosnia and Herzegovina
+501,FRA-ADE,France - Adelie Land
+503,AUS,Australia
+506,MMR,Myanmar
+508,BRN,Brunei
+510,#N/A,Micronesia
+511,#N/A,Palau (Republic of)
+512,#N/A,New Zealand
+514,#N/A,Cambodia (Kingdom of)
+515,#N/A,Cambodia (Kingdom of)
+516,#N/A,Australia - Christmas Island (Indian Ocean)
+518,#N/A,New Zealand - Cook Islands
+520,#N/A,Fiji (Republic of)
+523,#N/A,Australia - Cocos (Keeling) Islands
+525,#N/A,Indonesia (Republic of)
+529,#N/A,Kiribati (Republic of)
+531,#N/A,Lao People's Democratic Republic
+533,#N/A,Malaysia
+536,USA-MP,United States of America - Northern Mariana Islands (Commonwealth of the)
+538,#N/A,Marshall Islands (Republic of the)
+540,#N/A,France - New Caledonia
+542,#N/A,New Zealand - Niue
+544,#N/A,Nauru (Republic of)
+546,FRA-POL,France - French Polynesia
+548,PHL,Philippines (Republic of the)
+550,#N/A,Timor-Leste (Democratic Republic of)
+553,#N/A,Papua New Guinea
+555,GBR-PIT,United Kingdom of Great Britain and Northern Ireland - Pitcairn Island
+557,SLB,Solomon Islands
+559,USA-AS,United States of America - American Samoa
+561,WSM,Samoa (Independent State of)
+563,SGP,Singapore
+564,SGP,Singapore
+565,SGP,Singapore
+566,SGP,Singapore
+567,#N/A,Thailand
+570,#N/A,Tonga
+572,#N/A,Tuvalu
+574,#N/A,Viet Nam
+576,#N/A,Vanuatu
+577,#N/A,Vanuatu
+578,#N/A,France - Wallis and Futuna Islands
+601,#N/A,South Africa
+603,#N/A,Angola
+605,#N/A,Algeria
+607,#N/A,France - Saint Paul and Amsterdam Islands
+608,GBR-ASC,United Kingdom - Ascension Island
+609,#N/A,Burundi (Republic of)
+610,#N/A,Benin (Republic of)
+611,#N/A,Botswana (Republic of)
+612,#N/A,Central African Republic
+613,#N/A,Cameroon (Republic of)
+615,#N/A,Congo (Republic of the)
+616,#N/A,Comoros (Union of the)
+617,#N/A,Cabo Verde (Republic of)
+618,#N/A,France - Crozet Archipelago
+619,#N/A,Côte d'Ivoire (Republic of)
+620,#N/A,Comoros (Union of the)
+621,#N/A,Djibouti (Republic of)
+622,#N/A,Egypt (Arab Republic of)
+624,#N/A,Ethiopia (Federal Democratic Republic of)
+625,#N/A,Eritrea
+626,#N/A,Gabonese Republic
+627,#N/A,Ghana
+629,#N/A,Gambia (Republic of the)
+630,#N/A,Guinea-Bissau (Republic of)
+631,#N/A,Equatorial Guinea (Republic of)
+632,#N/A,Guinea (Republic of)
+633,#N/A,Burkina Faso
+634,#N/A,Kenya (Republic of)
+635,#N/A,France - Kerguelen Islands
+636,#N/A,Liberia (Republic of)
+637,#N/A,Liberia (Republic of)
+638,#N/A,South Sudan (Republic of)
+642,#N/A,Libya (State of)
+644,#N/A,Lesotho (Kingdom of)
+645,#N/A,Mauritius (Republic of)
+647,#N/A,Madagascar (Republic of)
+649,#N/A,Mali (Republic of)
+650,#N/A,Mozambique (Republic of)
+654,#N/A,Mauritania (Islamic Republic of)
+655,#N/A,Malawi
+656,#N/A,Niger (Republic of the)
+657,#N/A,Nigeria (Federal Republic of)
+659,#N/A,Namibia (Republic of)
+660,#N/A,France - Reunion (French Department of)
+661,#N/A,Rwanda (Republic of)
+662,#N/A,Sudan (Republic of the)
+663,#N/A,Senegal (Republic of)
+664,#N/A,Seychelles (Republic of)
+665,GBR-STH,United Kingdom of Great Britain and Northern Ireland - Saint Helena
+666,#N/A,Somalia (Federal Republic of)
+667,#N/A,Sierra Leone
+668,#N/A,Sao Tome and Principe (Democratic Republic of)
+669,#N/A,Eswatini (Kingdom of)
+670,#N/A,Chad (Republic of)
+671,#N/A,Togolese Republic
+672,#N/A,Tunisia
+674,#N/A,Tanzania (United Republic of)
+675,#N/A,Uganda (Republic of)
+676,#N/A,Democratic Republic of the Congo
+677,#N/A,Tanzania (United Republic of)
+678,#N/A,Zambia (Republic of)
+679,#N/A,Zimbabwe (Republic of)
+701,#N/A,Argentine Republic
+710,#N/A,Brazil (Federative Republic of)
+720,#N/A,Bolivia (Plurinational State of)
+725,#N/A,Chile
+730,#N/A,Colombia (Republic of)
+735,#N/A,Ecuador
+740,GBR-FKL,United Kingdom of Great Britain and Northern Ireland - Falkland Islands (Malvinas)
+745,#N/A,France - Guiana (French Department of)
+750,#N/A,Guyana
+755,#N/A,Paraguay (Republic of)
+760,#N/A,Peru
+765,#N/A,Suriname (Republic of)
+770,#N/A,Uruguay (Eastern Republic of)
+775,#N/A,Venezuela (Bolivarian Republic of)
