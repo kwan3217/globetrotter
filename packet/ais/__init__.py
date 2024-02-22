@@ -660,6 +660,8 @@ class posA(Packet):
     raim    :bool  =field(metadata=md(148, 1, b))
     radio   :int   =field(metadata=md(149,19, u))
 register_msg(3,posA)
+register_msg(2,posA)
+register_msg(1,posA)
 
 
 @aismsg
@@ -852,7 +854,7 @@ class msg9(Packet):
     dte     :bool =field(metadata=md(142, 1, b))
     assigned:bool =field(metadata=md(146, 1, b))
     raim    :bool =field(metadata=md(147, 1, b))
-    radio   :int  =field(metadata=md(148,20, u,record=False))
+    radio   :int  =field(metadata=md(148,20, u))
 register_msg(9,msg9)
 
 
