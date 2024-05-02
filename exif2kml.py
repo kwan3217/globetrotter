@@ -85,57 +85,60 @@ def make_kml_from_exif(path:str="/home/jeppesen/Desktop/DCA/"):
         for infn in sorted(glob.iglob(path+"/**/*.[Jj][Pp]*",recursive=True)):
             ouf.write("    <!-- %s -->\n"%infn)
             with open(infn,"rb") as inf:
-                tags=exifread.process_file(inf)
-                #for k,v in tags.items():
-                #    if k!="JPEGThumbnail":
-                #        print(k,v)
-                if "GPS GPSLatitude" in tags:
-                    print(infn)
-                    (lat,lon,gpstime,gpsvalid)=getgps(tags)
-                    tzname=tf.timezone_at(lat=lat,lng=lon)
-                    imgtime=getimgtime(tags)
-                    g=make_aware(gpstime)
-                    l=make_aware(imgtime,tzname=tzname)
-                    l_utc=l.astimezone(pytz.timezone("UTC"))
+                try:
+                    tags=exifread.process_file(inf)
+                    #for k,v in tags.items():
+                    #    if k!="JPEGThumbnail":
+                    #        print(k,v)
+                    if "GPS GPSLatitude" in tags:
+                        print(infn)
+                        (lat,lon,gpstime,gpsvalid)=getgps(tags)
+                        tzname=tf.timezone_at(lat=lat,lng=lon)
+                        imgtime=getimgtime(tags)
+                        g=make_aware(gpstime)
+                        l=make_aware(imgtime,tzname=tzname)
+                        l_utc=l.astimezone(pytz.timezone("UTC"))
 
-                    warning=""
-                    if not gpsvalid:
-                        warning+="Warning! GPS data is marked invalid.<br>"
-                    if g is not None and l is not None:
-                        diff=(g-l).total_seconds()
-                        if abs(diff)>8*3600:
-                            warning+=("Warning! GPS and image timestamps are too different. Old GPS fix?"
-                                     "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
-                        elif abs(diff)>5:
-                            warning+=("Warning! GPS and image timestamps are too different. Camera reported image time in UTC?"
-                                     "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
-                    if warning=="":
-                        warning="GPS looks good<br />"
-                    width = tags["EXIF ExifImageWidth"].values[0]
-                    height = tags["EXIF ExifImageLength"].values[0]
-                    if width>height:
-                        height=height*640//width
-                        width=640
-                    else:
-                        width=width*640//height
-                        height=640
-                    if l is not None:
-                        warning="Image time: %s<br />"%l.strftime("%Y-%m-%dT%H:%M:%S%z")+warning
-                    if g is not None:
-                        warning="GPS time: %04d-%02d-%02dT%02d:%02d:%02dZ<br />"%gpstime+warning
-                    print(warning)
-                    ouf.write("    <Placemark>\n")
-                    ouf.write("      <name>%s</name>\n"%infn.split("/")[-1])
-                    ouf.write("      <description><![CDATA[<img src=\"%s\" width=\"%d\" height=\"%d\" />%s]]></description>\n" % (infn,width,height,warning))
-                    ouf.write("      <styleUrl>camera</styleUrl>\n")
-                    ouf.write("      <TimeStamp><when>%s</when></TimeStamp>\n"%l.strftime("%Y-%m-%dT%H:%M:%S%z"))
-                    ouf.write("      <Point>\n")
-                    ouf.write("        <coordinates>%f,%f</coordinates>\n"%(lon,lat))
-                    ouf.write("      </Point>\n")
-                    ouf.write("    </Placemark>\n")
+                        warning=""
+                        if not gpsvalid:
+                            warning+="Warning! GPS data is marked invalid.<br>"
+                        if g is not None and l is not None:
+                            diff=(g-l).total_seconds()
+                            if abs(diff)>8*3600:
+                                warning+=("Warning! GPS and image timestamps are too different. Old GPS fix?"
+                                         "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
+                            elif abs(diff)>5:
+                                warning+=("Warning! GPS and image timestamps are too different. Camera reported image time in UTC?"
+                                         "Timestamp difference: %s%02d:%02d:%02d (%ds)<br />"%("+" if diff>0 else "-",abs(diff)//3600,(abs(diff)//60)%60,abs(diff)%60,diff))
+                        if warning=="":
+                            warning="GPS looks good<br />"
+                        width = tags["EXIF ExifImageWidth"].values[0]
+                        height = tags["EXIF ExifImageLength"].values[0]
+                        if width>height:
+                            height=height*640//width
+                            width=640
+                        else:
+                            width=width*640//height
+                            height=640
+                        if l is not None:
+                            warning="Image time: %s<br />"%l.strftime("%Y-%m-%dT%H:%M:%S%z")+warning
+                        if g is not None:
+                            warning="GPS time: %04d-%02d-%02dT%02d:%02d:%02dZ<br />"%gpstime+warning
+                        print(warning)
+                        ouf.write("    <Placemark>\n")
+                        ouf.write("      <name>%s</name>\n"%infn.split("/")[-1])
+                        ouf.write("      <description><![CDATA[<img src=\"%s\" width=\"%d\" height=\"%d\" />%s]]></description>\n" % (infn,width,height,warning))
+                        ouf.write("      <styleUrl>camera</styleUrl>\n")
+                        ouf.write("      <TimeStamp><when>%s</when></TimeStamp>\n"%l.strftime("%Y-%m-%dT%H:%M:%S%z"))
+                        ouf.write("      <Point>\n")
+                        ouf.write("        <coordinates>%f,%f</coordinates>\n"%(lon,lat))
+                        ouf.write("      </Point>\n")
+                        ouf.write("    </Placemark>\n")
+                except Exception:
+                    pass
         ouf.write('  </Document>\n')
         ouf.write('</kml>\n')
 
 
 if __name__=="__main__":
-    make_kml_from_exif("/mnt/big/Atlantic23.05/")
+    make_kml_from_exif("/mnt/big/kwanometry/Indiana24.04/photos/")
