@@ -17,8 +17,8 @@ import pytz
 
 from database.postgres import PostgresDatabase
 from packet import ensure_timeseries_tables, register_file_start, register_file_finish, Packet
-from packet.ais import parse_payload, parse_aivdm, msg4, NotHandled, ensure_tables, TxTimeSource, decode_mmsi
-
+from packet.ais import parse_payload, parse_aivdm, msg4, NotHandled, ensure_tables, TxTimeSource, decode_mmsi, \
+    RadioChannel
 
 dream = 311042900
 ouf_dream=open("log/dream_trust.csv","wt")
@@ -164,6 +164,7 @@ def packet_iterator(infn):
     in_debug = False
     this_ofs = 0
     next_ofs = this_ofs
+    radio=None
     with smart_open(infn, "rt") as inf:
         for i_line,line in enumerate(line_iterator(inf)):
             this_ofs = next_ofs
@@ -229,6 +230,11 @@ def packet_iterator(infn):
                             pass
                         else:
                             msg.utc_recv=received_dt
+                            if radio is not None:
+                                msg.radio_receiver=radio["radio_radio"]
+                                msg.radio_channel = RadioChannel.A if radio["radio_channel"] == "A" else RadioChannel.B
+                                msg.radio_db = radio["radio_rssi"]
+                                radio = None
                             yield msg,this_ofs
                     except NotHandled:
                         warnings.warn(f"Unable to parse message: {basename(infn)}, {i_line=}\n{line}\ndue to")
