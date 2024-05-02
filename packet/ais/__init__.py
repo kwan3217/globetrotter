@@ -375,6 +375,11 @@ class TxTimeSource(Flag):
     ROLLOVER_SECOND_RECV=8+16+32
 
 
+class RadioChannel(Enum):
+    A=0
+    B=1
+
+
 
 def parse_aivdm(msg):
     if not hasattr(parse_aivdm,'frags'):
@@ -424,6 +429,8 @@ def parse_payload(payload, shift=0):
     if msgtype not in parse_payload.classes:
         raise NotHandled(f"No handler for message type {msgtype}\n{payload:x}")
     return parse_payload.classes[msgtype](nbits,payload)
+
+
 parse_payload.classes={}
 def register_msg(msgtype,msgcls):
     parse_payload.classes[msgtype]=msgcls
@@ -577,6 +584,12 @@ def aismsg(msgcls):
     msgcls.__annotations__["utc_txtimesrc"] = TxTimeSource
     msgcls.utc_txtrust = None
     msgcls.__annotations__["utc_txtrust"] = bool
+    msgcls.radio_receiver=None
+    msgcls.__annotations__["radio_receiver"] = int
+    msgcls.radio_channel=None
+    msgcls.__annotations__["radio_channel"] = RadioChannel
+    msgcls.radio_db=None
+    msgcls.__annotations__["radio_db"] = int
     msgcls=dataclass(msgcls)
     compile(msgcls)
     msgcls.use_epoch=False
