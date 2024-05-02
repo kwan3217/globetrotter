@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "globetrotter"
+version = "0.1.0"
+authors = [
+  { name="kwan3217", email="kwan3217@gmail.com" },
+]
+description = "Globetrotter -- code to process recorded GPS, AIS, and ADS data"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+dependencies=[
+    "pytest",
+    "psycopg",
+    "mysql-connector-python",
+    "kwanmath @ git+ssh://git@github.com/kwan3217/kwanmath.git",
+]
+
+[project.urls]
+Homepage = "https://github.com/kwan3217/globetrotter/"
+Issues = "https://github.com/kwan3217/globetrotter/issues"

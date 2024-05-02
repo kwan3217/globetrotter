@@ -1,4 +1,11 @@
-def save_path(track:list[dict],oufn:str,shipname:str):
+"""
+Code for working with "tracklet" sets. The track of any one object might not have continuous
+data, so we have one tracklet for each continuous run of data, with gaps between them. Since
+the actual data is positions at discrete times with no actual markers for when a track
+breaks, a lot of this code is for determining when to break a track into tracklets.
+"""
+
+def save_tracklets(track:list[dict], oufn:str, shipname:str):
     """
 
     :param track:
