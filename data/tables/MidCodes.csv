@@ -1,0 +1,295 @@
+Digits,Three-letter code,Country name
+201,ALB,Albania
+202,AND,Andorra
+203,AUT,Austria
+204,PRT-AZO,Portugal - Azores
+205,BEL,Belgium
+206,BLR,Belarus
+207,BGR,Bulgaria
+208,VAT,Vatican City State
+209,CYP,Cyprus
+210,CYP,Cyprus
+211,GER,Germany
+212,CYP,Cyprus
+213,GEO,Georgia
+214,MDA,Moldova
+215,MLT,Malta
+216,ARM,Armenia
+218,GER,Germany
+219,DNK,Denmark
+220,DNK,Denmark
+224,ESP,Spain
+225,ESP,Spain
+226,FRA,France
+227,FRA,France
+228,FRA,France
+229,MLT,Malta
+230,FIN,Finland
+231,DNK-FAE,Denmark - Faroe Islands
+232,GBR,United Kingdom
+233,GBR,United Kingdom
+234,GBR,United Kingdom
+235,GBR,United Kingdom
+236,GBR-GIB,United Kingdom - Gibraltar
+237,GRC,Greece
+238,HRV,Croatia
+239,GRC,Greece
+240,GRC,Greece
+241,GRC,Greece
+242,MAR,Morocco
+243,HUN,Hungary
+244,NLD,Netherlands
+245,NLD,Netherlands
+246,NLD,Netherlands
+247,ITA,Italy
+248,MLT,Malta
+249,MLT,Malta
+250,IRL,Ireland
+251,ISL,Iceland
+252,LIE,Liechtenstein
+253,LUX,Luxembourg
+254,MCO,Monaco
+255,PRT-MAD,Portugal - Madeira
+256,MLT,Malta
+257,NOR,Norway
+258,NOR,Norway
+259,NOR,Norway
+261,POL,Poland
+262,MNE,Montenegro
+263,PRT,Portugal
+264,ROU,Romania
+265,SWE,Sweden
+266,SWE,Sweden
+267,SVK,Slovak Republic
+268,SMR,San Marino
+269,CHE,Switzerland
+270,CZE,Czech Republic
+271,TUR,Republic of Türkiye
+272,UKR,Ukraine
+273,RUS,Russian Federation
+274,MKD,North Macedonia
+275,LVA,Latvia
+276,EST,Estonia
+277,LTU,Lithuania
+278,SVN,Slovenia
+279,SVK,Serbia
+301,GBR-ANG,United Kingdom - Anguilla
+303,USA-AK,United States of America - Alaska
+304,ATG,Antigua and Barbuda
+305,ATG,Antigua and Barbuda
+306,NLD-BES,Netherlands - Bonaire, Sint Eustatius and Saba
+306,NLD-CW,Netherlands - Curaçao
+306,NLD-SX,Netherlands - Sint Maarten (Dutch part)
+307,NLD-ARB,Netherlands - Aruba
+308,BHS,Bahamas
+309,BHS,Bahamas
+310,GBR-BER,United Kingdom - Bermuda
+311,BHS,Bahamas
+312,BLZ,Belize
+314,BRB,Barbados
+316,CAN,Canada
+319,GBR-CAY,United Kingdom - Cayman Islands
+321,CRI,Costa Rica
+323,CUB,Cuba
+325,DMA,Dominica
+327,DOM,Dominican Republic
+329,FRA-GUA,France - Guadeloupe
+330,GRD,Grenada
+331,DNK-GRL,Denmark - Greenland
+332,GTM,Guatemala
+334,HND,Honduras
+336,HTI,Haiti
+338,USA,United States of America
+339,JAM,Jamaica
+341,KNA,Saint Kitts and Nevis
+343,LCA,Saint Lucia
+345,MEX,Mexico
+347,FRA-MAR,France - Martinique
+348,GBR-MTS,United Kingdom - Montserrat
+350,NIC,Nicaragua
+351,PAN,Panama
+352,PAN,Panama
+353,PAN,Panama
+354,PAN,Panama
+355,PAN,Panama
+356,PAN,Panama
+357,PAN,Panama
+358,USA-PR,United States of America - Puerto Rico
+359,SLV,El Salvador
+361,FRA-SPM,France - Saint Pierre and Miquelon
+362,TTO,Trinidad and Tobago
+364,GBR-TCI,United Kingdom - Turks and Caicos Islands
+366,USA,United States of America
+367,USA,United States of America
+368,USA,United States of America
+369,USA,United States of America
+370,PAN,Panama
+371,PAN,Panama
+372,PAN,Panama
+373,PAN,Panama
+374,PAN,Panama
+375,VCT,Saint Vincent and the Grenadines
+376,VCT,Saint Vincent and the Grenadines
+377,VCT,Saint Vincent and the Grenadines
+378,GBR-BVI,United Kingdom - British Virgin Islands
+379,USA-VI,United States of America - United States Virgin Islands
+401,AFG,Afghanistan
+403,SAU,Saudi Arabia
+405,BGD,Bangladesh
+408,BHR,Bahrain
+410,BTN,Bhutan
+412,CHN,People's Republic of China
+413,CHN,People's Republic of China
+414,CHN,People's Republic of China
+416,TWN,Taiwan
+417,LKA,Sri Lanka
+419,IND,India
+422,IRN,Iran
+423,AZE,Azerbaijan
+425,IRQ,Iraq
+428,ISR,Israel
+431,JPN,Japan
+432,JPN,Japan
+434,TKM,Turkmenistan
+436,KAZ,Kazakhstan
+437,UZB,Uzbekistan
+438,JOR,Jordan
+440,KOR,South Korea
+441,KOR,South Korea
+443,PSE,Palestine
+445,PRK,North Korea
+447,KWT,Kuwait
+450,LBN,Lebanon
+451,KGZ,Kyrgyzstan
+453,CHN-MCO,People's Republic of China - Macao
+455,MDV,Maldives
+457,MNG,Mongolia
+459,NPL,Nepal
+461,OMN,Oman
+463,PAK,Pakistan
+466,QAT,Qatar
+468,SYR,Syria
+470,ARE,United Arab Emirates
+471,ARE,United Arab Emirates
+472,TJK,Tajikistan
+473,YEM,Yemen
+475,YEM,Yemen
+477,CHN-HKG,People's Republic of China - Hong Kong
+478,BIH,Bosnia and Herzegovina
+501,FRA-ADE,France - Adelie Land
+503,AUS,Australia
+506,MMR,Myanmar
+508,BRN,Brunei
+510,FSM,Micronesia
+511,PLW,Palau (Republic of)
+512,NZL,New Zealand
+514,KHM,Cambodia (Kingdom of)
+515,KHM,Cambodia (Kingdom of)
+516,AUS-CXR,Australia - Christmas Island (Indian Ocean)
+518,NZL-COK,New Zealand - Cook Islands
+520,FJI,Fiji (Republic of)
+523,AUS-CCK,Australia - Cocos (Keeling) Islands
+525,IDN,Indonesia (Republic of)
+529,KIR,Kiribati (Republic of)
+531,LAO,Laos
+533,MYS,Malaysia
+536,USA-MP,United States of America - Northern Mariana Islands (Commonwealth of the)
+538,MHL,Marshall Islands (Republic of the)
+540,FRA-NCL,France - New Caledonia
+542,NZL-NIU,New Zealand - Niue
+544,NRU,Nauru (Republic of)
+546,FRA-POL,France - French Polynesia
+548,PHL,Philippines (Republic of the)
+550,TLS,Timor-Leste (Democratic Republic of)
+553,PNG,Papua New Guinea
+555,GBR-PIT,United Kingdom - Pitcairn Island
+557,SLB,Solomon Islands
+559,USA-AS,United States of America - American Samoa
+561,WSM,Samoa (Independent State of)
+563,SGP,Singapore
+564,SGP,Singapore
+565,SGP,Singapore
+566,SGP,Singapore
+567,THA,Thailand
+570,TON,Tonga
+572,TUV,Tuvalu
+574,VNM,Viet Nam
+576,VUT,Vanuatu
+577,VUT,Vanuatu
+578,FRA-WLF,France - Wallis and Futuna Islands
+601,ZAF,South Africa
+603,AGO,Angola
+605,DZA,Algeria
+607,FRA-SPA,France - Saint Paul and Amsterdam Islands
+608,GBR-ASC,United Kingdom - Ascension Island
+609,BDI,Burundi (Republic of)
+610,BEN,Benin (Republic of)
+611,BWA,Botswana (Republic of)
+612,CAF,Central African Republic
+613,CMR,Cameroon (Republic of)
+615,COD,Congo (Republic of the)
+616,COM,Comoros (Union of the)
+617,CPV,Cabo Verde (Republic of)
+618,FRA-CRO,France - Crozet Archipelago
+619,CIV,Côte d'Ivoire (Republic of)
+620,COM,Comoros (Union of the)
+621,DJI,Djibouti (Republic of)
+622,EGY,Egypt (Arab Republic of)
+624,ETH,Ethiopia (Federal Democratic Republic of)
+625,ERI,Eritrea
+626,GAB,Gabonese Republic
+627,GHA,Ghana
+629,GMB,Gambia (Republic of the)
+630,GNB,Guinea-Bissau (Republic of)
+631,GNQ,Equatorial Guinea (Republic of)
+632,GIN,Guinea (Republic of)
+633,BFA,Burkina Faso
+634,KEN,Kenya
+635,FRA-KER,France - Kerguelen Islands
+636,LBR,Liberia
+637,LBR,Liberia
+638,SSD,South Sudan
+642,LIB,Libya
+644,LSO,Lesotho
+645,MUS,Mauritius
+647,MDG,Madagascar
+649,MLI,Mali
+650,MOZ,Mozambique
+654,MRT,Mauritania
+655,MWI,Malawi
+656,NER,Niger
+657,NGA,Nigeria
+659,NAM,Namibia
+660,FRA-REU,France - Reunion
+661,RWA,Rwanda
+662,SDN,Sudan
+663,SEN,Senegal
+664,SYC,Seychelles
+665,GBR-STH,United Kingdom - Saint Helena
+666,SOM,Somalia
+667,SLE,Sierra Leone
+668,STP,Sao Tome and Principe
+669,SWZ,Eswatini
+670,TCD,Chad
+671,TGO,Togolese Republic
+672,TUN,Tunisia
+674,TZA,Tanzania (United Republic of)
+675,UGA,Uganda (Republic of)
+676,COD,Democratic Republic of the Congo
+677,TZA,Tanzania (United Republic of)
+678,ZMB,Zambia (Republic of)
+679,ZWE,Zimbabwe (Republic of)
+701,ARG,Argentina
+710,BRA,Brazil (Federative Republic of)
+720,BOL,Bolivia (Plurinational State of)
+725,CHL,Chile
+730,COL,Colombia
+735,ECU,Ecuador
+740,GBR-FKL,United Kingdom - Falkland Islands
+745,FRA-GUF,France - Guiana
+750,GUY,Guyana
+755,PRY,Paraguay
+760,PER,Peru
+765,SUR,Suriname
+770,URY,Uruguay
+775,VEN,Venezuela
