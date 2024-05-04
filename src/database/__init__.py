@@ -1,12 +1,11 @@
 """
-
+Wrapper that makes this code able to use either postgres or mysql
 
 """
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from collections import namedtuple
-from enum import Enum, EnumType
+from enum import EnumType
 from itertools import chain
 from typing import Iterable, Mapping
 

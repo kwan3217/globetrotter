@@ -1,3 +1,9 @@
+"""
+Code to handle binary packets. This must be able to at least ignore and skip
+any format of packet that is found in any data stream that is actually recorded.
+"""
+
+
 import warnings
 from dataclasses import dataclass, fields
 from decimal import Decimal
