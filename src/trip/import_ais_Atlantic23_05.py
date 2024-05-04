@@ -20,7 +20,7 @@ from packet.ais import parse_payload, parse_aivdm, msg4, NotHandled, ensure_tabl
     RadioChannel
 
 dream = 311042900
-ouf_dream=open("log/dream_trust.csv","wt")
+ouf_dream=open("data/log/dream_trust.csv","wt")
 
 
 def smart_open(fn, mode: str = None):
