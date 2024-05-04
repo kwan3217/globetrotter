@@ -309,11 +309,11 @@ def main():
             for i_infn,infn in enumerate(infns):
                 file_dt = get_fn_dt(infn)
                 last_trusted_txmt_dt=file_dt
-#                print(f"{i_infn}/{len(infns)} {basename(infn)}")
+                print(f"{i_infn}/{len(infns)} {basename(infn)}")
                 with db.transaction():
                     fileid = register_file_start(db, basename(infn))
                 with db.transaction():
-                    for msg,ofs in packet_iterator(infn):
+                    for i_packet,(msg,ofs) in enumerate(packet_iterator(infn)):
                         # Timing
                         # We are sucking on a continuous stream of data, which unfortunately sometimes
                         # does not have a solid timestamp. In fact, a *lot* of the data doesn't have
@@ -335,6 +335,10 @@ def main():
                         #
                         # If we "trust" the timestamp:
                         #   Keep note of it as our last trusted timestamp
+                        if i_packet%100==0 and i_packet>0:
+                            print('.',end='')
+                            if i_packet%10000==0:
+                                print(f"{i_packet:10d}")
                         if msg.utc_recv is None:
                             msg.utc_txtimesrc = TxTimeSource.TRUST
                         else:
@@ -388,6 +392,7 @@ def main():
                             msg.utc_txtrust,last_trusted_txmt_dt = check_trust(msg, last_trusted_txmt_dt, mmsi_trust_strikes)
                         msg.write(db, fileid=fileid, ofs=ofs)
                 with db.transaction():
+                    print(f"{i_packet:10d}")
                     register_file_finish(db, fileid)
     for mmsi in sorted(mmsi_trust_strikes.keys()):
         print(f"{mmsi:09d} - {mmsi_trust_strikes[mmsi]:3d}")
