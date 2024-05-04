@@ -7,13 +7,12 @@ import re
 import warnings
 from copy import copy
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from glob import glob
 from math import floor
 from os.path import basename
 from typing import Union, Match
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from database.postgres import PostgresDatabase
 from packet import ensure_timeseries_tables, register_file_start, register_file_finish, Packet
@@ -88,14 +87,15 @@ def make_utc(y:int=None,
     else:
         u=0
     if local:
-        dt = pytz.timezone(tzname).localize(datetime(year=y, month=m, day=d,
-                                                     hour=h, minute=n, second=s,
-                                                     microsecond=u)).astimezone(pytz.utc)
+        local_dt = datetime(year=y, month=m, day=d,
+                      hour=h, minute=n, second=s,microsecond=u,
+                      tzinfo=ZoneInfo(tzname))
+        utc_dt=local_dt.astimezone(timezone.utc)
     else:
-        dt = pytz.utc.localize(datetime(year=y, month=m, day=d,
-                                        hour=h, minute=n, second=s,
-                                        microsecond=u))
-    return dt
+        utc_dt = datetime(year=y, month=m, day=d,
+                      hour=h, minute=n, second=s,microsecond=u,
+                      tzinfo=timezone.utc)
+    return utc_dt
 
 
 ttycat_fn_timestamp=re.compile(r"daisy_(?P<year>[0-9][0-9])(?P<month>[0-9][0-9])(?P<day>[0-9][0-9])"
